@@ -231,7 +231,7 @@ SECRET_KEY = get_from_environment('DJANGO_SECRET_KEY')
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 STATIC_ROOT = 'static'
 STATIC_URL = '/static/'
-STATICFILES_STORAGE = 'whitenoise.django.GzipManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # --------------------------------------------------------

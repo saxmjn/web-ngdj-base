@@ -15,8 +15,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     raw_id_fields = ['user', 'category', 'categories', 'city']
     readonly_fields = ['modified', 'created', 'device_token', 'read_notification_count',
                        'phone_number', 'phone_code', 'phone_otp', 'phone_verified', 'category', 'categories', 'city',
-                       'inviter', 'birth', 'sex', 'language', 'heading', 'summary', 'last_opened_at',
-                       'last_broadcasted_at']
+                       'inviter', 'birth', 'sex', 'language', 'heading', 'summary', 'last_opened_at',]
     exclude = ('signup_stage', 'signup_done', 'location', 'profile_pic_url')
 
     def name(self, obj):

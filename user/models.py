@@ -74,7 +74,6 @@ class UserProfile(models.Model):
     permission_product_updates = models.BooleanField(default=True)
     active = models.BooleanField(default=True)
     last_opened_at = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)
-    last_broadcasted_at = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     modified = models.DateTimeField(auto_now_add=True, editable=True)
 
