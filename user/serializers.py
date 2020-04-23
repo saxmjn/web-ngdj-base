@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 # PROJECT
-from commune.utils import get_datetime_str
+from app.utils import get_datetime_str
 from general import serializers as general_serializer
 from . import models
 

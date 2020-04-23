@@ -9,8 +9,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 # PROJECT
-from commune import constants
-from commune.utils import validate_get_phone, raise_error, validate_email, validate_phone, get_phone_or_null
+from app import constants
+from app.utils import validate_get_phone, raise_error, validate_email, validate_phone, get_phone_or_null
 from user.models import UserProfile
 
 

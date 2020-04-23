@@ -5,7 +5,7 @@ from rest_framework.response import Response
 import json
 
 from authe.jwt_utils import JWTAuthentication
-from commune.utils import success_resp, error_resp, get_value_or_default, get_value_or_404
+from app.utils import success_resp, error_resp, get_value_or_default, get_value_or_404
 from . import models, tasks
 
 

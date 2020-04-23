@@ -1,7 +1,7 @@
 # Comment: uncomment after fixing
 # from __future__ import absolute_import, unicode_literals
 # from celery import shared_task
-# from commune.celery import app
+# from app.celery import app
 # from django.contrib.auth.models import User
 # from general import firebase
 
