@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 # Project
-from commune.utils import get_value_or_404, get_value_or_default, create_error_object, success_resp, error_resp, \
+from app.utils import get_value_or_404, get_value_or_default, create_error_object, success_resp, error_resp, \
     raise_error
 from . import utils, jwt_utils
 

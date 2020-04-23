@@ -20,5 +20,5 @@ urlpatterns = [
     url(r'^grappelli/', include('grappelli.urls')),
     url(r'^admin/', admin.site.urls),
     url(r'^api-authe/', include('rest_framework.urls')),
-    url(r'^api/', include('commune.api_urls')),
+    url(r'^api/', include('app.api_urls')),
 ]

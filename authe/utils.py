@@ -8,8 +8,8 @@ from django.conf import settings
 # PROJECT
 from general.utils import msg91_phone_otp_verification
 from . import jwt_utils
-from commune import constants
-from commune.utils import raise_error
+from app import constants
+from app.utils import raise_error
 from user.models import UserProfile, UserLinkedInData, UserGoogleData
 
 logger = logging.getLogger("application")

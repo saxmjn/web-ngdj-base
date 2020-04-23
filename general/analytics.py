@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from django.db import models
-from commune.gen_utils import create_datetime, current_datetime, today_datetime, tomorrow_datetime
+from app.gen_utils import create_datetime, current_datetime, today_datetime, tomorrow_datetime
 from user import models as user_models
 
 

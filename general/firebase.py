@@ -1,5 +1,5 @@
 import firebase_admin
-from commune.settings import get_path, get_from_environment
+from app.settings import get_path, get_from_environment
 from firebase_admin import credentials
 from firebase_admin import firestore
 from firebase_admin import messaging

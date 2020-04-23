@@ -7,8 +7,8 @@ from django.db import models
 from . import utils
 # PROJECT
 
-from commune.fields import UUIDField
-from commune.utils import validate_get_phone, random_with_N_digits
+from app.fields import UUIDField
+from app.utils import validate_get_phone, random_with_N_digits
 
 
 class File(models.Model):
