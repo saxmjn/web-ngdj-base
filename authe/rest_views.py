@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 # Project
-from app.utils import get_value_or_404, get_value_or_default, create_error_object, success_resp, error_resp, \
+from commune.utils import get_value_or_404, get_value_or_default, create_error_object, success_resp, error_resp, \
     raise_error
 from . import utils, jwt_utils
 
@@ -25,7 +25,7 @@ class EmailAuth(APIView):
         username = get_value_or_default(request.data, 'username', None)
 
         try:
-            user = utils.get_or_create_user_from_email(username=username, email=email, first_name=first_name,
+            user = utils.create_user_from_email(username=username, email=email, first_name=first_name,
                                                 last_name=last_name, password1=password1,
                                                 password2=password2)
             context = {'username': user.username, 'password': password1}
@@ -37,6 +37,17 @@ class EmailAuth(APIView):
             errors = str(e)
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def post(self, request):
+        email = get_value_or_404(request.data, 'email')
+        password = get_value_or_404(request.data, 'password')
+
+        try:
+            context = utils.get_user_from_email(email=email, password=password)
+            return Response(success_resp(data=context), status=status.HTTP_200_OK)
+        except ValueError as ve:
+            return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)        
 
 class PhoneAuth(APIView):
     permission_classes = (AllowAny,)

@@ -8,8 +8,8 @@ from django.conf import settings
 # PROJECT
 from general.utils import msg91_phone_otp_verification
 from . import jwt_utils
-from app import constants
-from app.utils import raise_error
+from commune import constants
+from commune.utils import raise_error
 from user.models import UserProfile, UserLinkedInData, UserGoogleData
 
 logger = logging.getLogger("application")
@@ -39,7 +39,7 @@ def get_or_create_user_from_google(data):
         UserGoogleData.create(user=user, data=data)
 
     if user and user.is_active:
-        token = get_token_for_user(user)
+        token = jwt_utils.get_token_for_user(user)
         return token
     else:
         raise_error(code='ERR0006')
@@ -90,7 +90,7 @@ def get_or_create_user_from_linkedin(code, redirect_uri):
         UserLinkedInData.update(uid=user_id_from_linkedin, token=access_token, data=ret, user=user)
 
     if user and user.is_active:
-        token = get_token_for_user(user)
+        token = jwt_utils.get_token_for_user(user)
         return token
     else:
         raise_error(code='ERR0006')
@@ -117,7 +117,7 @@ def get_or_create_user_from_linkedin_mob(user_id, email, first_name, last_name, 
         raise_error(code='ERR0006')
 
 
-def get_or_create_user_from_email(username, email, first_name, last_name, password1, password2):
+def create_user_from_email(username, email, first_name, last_name, password1, password2):
     if password1 != password2:
         raise_error('ERR-AUTH-004')
 
@@ -126,6 +126,21 @@ def get_or_create_user_from_email(username, email, first_name, last_name, passwo
     user.save()
     return user
 
+def get_user_from_email(email, password):
+    if not password:
+        raise_error('ERR-AUTH-001')
+    
+    user_profile = UserProfile.match_user_from_email(email=email)
+    if user_profile is None:
+        raise_error('ERR-USER-001')
+
+    user = user_profile.user
+    if password and user.check_password(password):
+        token = jwt_utils.get_token_for_user(user)
+        data = {'token': token, 'user_id': user.id, 'username': user.username}
+        return data    
+    else:
+        raise_error('ERR-AUTH-001')
 
 def create_user_from_phone(phone_number, username, email, first_name, last_name, password1, password2):
     if password1 != password2:
