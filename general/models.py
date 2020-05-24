@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 # PROJECT
 from . import utils
-from app.fields import UUIDField
+from app import _fields as fields
 from app.utils import validate_get_phone, random_with_N_digits, validate_email
 
 
@@ -15,7 +15,7 @@ class File(models.Model):
     Based on the architecture suggested at https://devcenter.heroku.com/articles/s3-upload-python
     Helps to generate secure URLs to upload/obtain files
     """
-    uuid = UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uuid = fields.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=250, help_text="The MIME type of the file")
     url = models.TextField(null=True, blank=True)

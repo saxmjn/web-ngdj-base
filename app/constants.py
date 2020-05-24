@@ -128,3 +128,11 @@ content_types = {
 }
 content_types_choices = [tuple([v, k]) for k, v in content_types.items()]
 content_types_list = [k[0] for k in content_types.items()]
+
+notification_type = {
+}
+notification_type_choices = [tuple([v, k]) for k, v in notification_type.items()]
+
+notification_reference = {
+}
+notification_reference_choices = [tuple([v, k]) for k, v in notification_reference.items()]

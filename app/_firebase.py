@@ -5,7 +5,8 @@ from firebase_admin import firestore
 from firebase_admin import messaging
 from app.settings import FIREBASE_PROJECT_ID 
 
-cred = credentials.Certificate(get_path('app/here-your-firebase-cred-file.json'))
+firebase_cred_file = 'app/here-your-firebase-cred-file.json'
+cred = credentials.Certificate(get_path(firebase_cred_file))
 firebase_ins = firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
 
 

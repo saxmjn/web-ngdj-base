@@ -12,11 +12,9 @@ from django.db.models import Q
 
 # PROJECT
 from app import constants
-from app import datetime as app_datetime
-from app.utils import raise_error, validate_email, validate_get_phone, to_bool, \
-    validate_phone, get_datetime
-from general import firebase
-from general.firebase import notify_general_to_user, setup_user_on_firebase
+from app import _datetime as datetime
+from app import _firebase as firebase
+from app.utils import (raise_error, validate_email, validate_get_phone, to_bool, validate_phone)
 from general.models import Category, Phone, City, Email
 from general.utils import msg91_phone_otp_verification
 
@@ -26,7 +24,6 @@ AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "authe.User")
 class UserTag(models.Model):
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=15, unique=True)
-    type = models.CharField(max_length=250, choices=constants.user_tag_type_choices, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     modified = models.DateTimeField(auto_now_add=True, editable=True)
 
@@ -506,12 +503,12 @@ class UserProfile(models.Model):
         if location:
             obj.location = location
         if birth:
-            obj.birth = get_datetime(birth)
+            obj.birth = datetime.get_datetime(birth)
         if sex:
             obj.sex = sex
         if device_token is not None:
             obj.device_token = device_token
-        obj.modified = app_datetime.now
+        obj.modified = datetime.now
         obj.user.save()
         obj.save()
         return obj
@@ -687,8 +684,8 @@ class UserFollower(models.Model):
     def find_followings_and_status_updates(cls, user):
         following_pks = cls.objects.filter(follower=user, active=True).values_list('user', flat=True)
         followings = UserProfile.objects.filter(user_id__in=following_pks,
-                                                status_updated_at__gte=app_datetime.today,
-                                                status_updated_at__lt=app_datetime.tomorrow).exclude(
+                                                status_updated_at__gte=datetime.today,
+                                                status_updated_at__lt=datetime.tomorrow).exclude(
             Q(status__isnull=True) | Q(status__exact='')).order_by('-status_updated_at')
         data = {'followings': followings, 'count': followings.count()}
         return data
@@ -807,42 +804,3 @@ class UserLinkedInData(models.Model):
             obj = cls.objects.create(uid=uid, user=user, token=token, data=data)
 
         return obj
-
-
-class UserNotification(models.Model):
-    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sender = models.ForeignKey(AUTH_USER_MODEL, related_name="notification_sender", on_delete=models.CASCADE)
-    type = models.CharField(choices=constants.notification_type_states_choices, max_length=500, null=True,
-                            blank=True)
-    title = models.CharField(max_length=500, null=True, blank=True)
-    content = models.TextField(null=True, blank=True)
-    reference_id = models.CharField(max_length=500, null=True, blank=True)
-    reference_type = models.CharField(choices=constants.reference_type_states_choices, max_length=500, null=True,
-                                      blank=True)
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-    modified = models.DateTimeField(auto_now_add=True, editable=True)
-
-    @staticmethod
-    def new_follower(connection):
-        if connection.active:
-            user = connection.user
-            sender = connection.follower
-            type = 'NEW_FOLLOWER'
-            title = '{} has started following you'.format(sender.first_name)
-            UserNotification.objects.create(user=user, sender=sender, type=type, title=title)
-            total_count = UserNotification.objects.filter(user=user).count()
-            notify_general_to_user(to_user=user, count=total_count)
-            firebase.push_notification_trigger(to_user=user, from_user=sender, type='NEW_FOLLOWER', reference_id=sender.id, reference_username=sender.username)
-
-    @staticmethod
-    def get_notifications(user, offset=0):
-        limit = 10
-        offset = int(offset)
-        total_count = UserNotification.objects.filter(user=user).count()
-        if offset == 0:
-            user.userprofile.read_notification_count = total_count
-            user.userprofile.save()
-        notifications = UserNotification.objects.filter(user=user).order_by('-created')[offset:offset + limit]
-        read_count = user.userprofile.read_notification_count
-        data = {'notifications': notifications, 'total_count': total_count, 'read_count': read_count}
-        return data
