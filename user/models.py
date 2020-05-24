@@ -12,11 +12,12 @@ from django.db.models import Q
 
 # PROJECT
 from app import constants
+from app import datetime as app_datetime
 from app.utils import raise_error, validate_email, validate_get_phone, to_bool, \
     validate_phone, get_datetime
 from general import firebase
 from general.firebase import notify_general_to_user, setup_user_on_firebase
-from general.models import Category, Phone, City
+from general.models import Category, Phone, City, Email
 from general.utils import msg91_phone_otp_verification
 
 AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "authe.User")
@@ -520,7 +521,7 @@ class UserProfile(models.Model):
             obj.sex = sex
         if device_token is not None:
             obj.device_token = device_token
-        obj.modified = general_datetime.now
+        obj.modified = app_datetime.now
         obj.user.save()
         obj.save()
         return obj
@@ -696,8 +697,8 @@ class UserFollower(models.Model):
     def find_followings_and_status_updates(cls, user):
         following_pks = cls.objects.filter(follower=user, active=True).values_list('user', flat=True)
         followings = UserProfile.objects.filter(user_id__in=following_pks,
-                                                status_updated_at__gte=general_datetime.today,
-                                                status_updated_at__lt=general_datetime.tomorrow).exclude(
+                                                status_updated_at__gte=app_datetime.today,
+                                                status_updated_at__lt=app_datetime.tomorrow).exclude(
             Q(status__isnull=True) | Q(status__exact='')).order_by('-status_updated_at')
         data = {'followings': followings, 'count': followings.count()}
         return data
