@@ -42,3 +42,15 @@ header.payload.signature
 1. Upload Contacts from Phone
 2. Invite Contacts
 3. Invitee join's from your invite
+
+## REAL TIME CHAT
+In this part I will talk about developing a real time chat. You can check the chat working in this video.
+
+#### Libraries Used:
+* Firebase
+* AWS S3
+
+#### Features:
+* Chat is based on channel which comprise of two participants
+* Participants can send each other messages in text, file and image formats
+* Participants can take actions like delete and forward a message
