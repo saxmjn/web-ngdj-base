@@ -10,6 +10,7 @@ from general.utils import msg91_phone_otp_verification
 from . import jwt_utils
 from commune import constants
 from commune.utils import raise_error
+from general.models import Email
 from user.models import UserProfile, UserLinkedInData, UserGoogleData
 
 logger = logging.getLogger("application")
@@ -117,22 +118,24 @@ def get_or_create_user_from_linkedin_mob(user_id, email, first_name, last_name, 
         raise_error(code='ERR0006')
 
 
-def create_user_from_email(username, email, first_name, last_name, password1, password2):
+def create_user_from_email(username, email, first_name, last_name, password1, password2, otp):
     if password1 != password2:
-        raise_error('ERR-AUTH-004')
+        raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
 
-    user = UserProfile.create(email=email, first_name=first_name, last_name=last_name, username=username).user
+    user = UserProfile.create_from_email(email=email, first_name=first_name, last_name=last_name, username=username, otp=otp).user
     user.set_password(password1)
     user.save()
-    return user
+    token = jwt_utils.get_token_for_user(user)
+    data = {'username': user.username, 'token': token, 'user_id': user.id}
+    return data
 
 def get_user_from_email(email, password):
     if not password:
-        raise_error('ERR-AUTH-001')
+        raise_error('ERR-AUTH-INVALID-CREDENTIALS')
     
     user_profile = UserProfile.match_user_from_email(email=email)
     if user_profile is None:
-        raise_error('ERR-USER-001')
+        raise_error('ERR-USER-NOT-FOUND')
 
     user = user_profile.user
     if password and user.check_password(password):
@@ -140,13 +143,14 @@ def get_user_from_email(email, password):
         data = {'token': token, 'user_id': user.id, 'username': user.username}
         return data    
     else:
-        raise_error('ERR-AUTH-001')
+        raise_error('ERR-AUTH-INVALID-PASSWORD')
 
-def create_user_from_phone(phone_number, username, email, first_name, last_name, password1, password2):
+
+def create_user_from_phone(phone_number, username, email, first_name, last_name, password1, password2, otp):
     if password1 != password2:
-        raise_error('ERR-AUTH-004')
+        raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
 
-    user = UserProfile.create_with_phone(phone_number=phone_number, email=email, first_name=first_name, last_name=last_name, username=username).user
+    user = UserProfile.create_with_phone(phone_number=phone_number, email=email, first_name=first_name, last_name=last_name, username=username, otp=otp).user
     user.set_password(password1)
     user.save()
     token = jwt_utils.get_token_for_user(user)
@@ -155,12 +159,12 @@ def create_user_from_phone(phone_number, username, email, first_name, last_name,
 
 
 def get_user_from_phone(phone_number, password=None, phone_otp=None):
-    if not password and not phone_otp:
-        raise_error('ERR-AUTH-001')
+    if not password or not phone_otp:
+        raise_error('ERR-AUTH-INVALID-CREDENTIALS')
     user_profile = UserProfile.match_user_from_phone(phone=phone_number)
 
     if user_profile is None:
-        raise_error('ERR-USER-001')
+        raise_error('ERR-USER-NOT-FOUND')
 
     user = user_profile.user
     if password and user.check_password(password):
@@ -172,8 +176,30 @@ def get_user_from_phone(phone_number, password=None, phone_otp=None):
         data = {'token': token, 'user_id': user.id, 'username': user.username}
         return data
     else:
-        raise_error('ERR-AUTH-001')
+        raise_error('ERR-AUTH-INVALID-PASSWORD')
 
+
+def reset_password(user, old_password, password1, password2):
+    if not user.check_password(old_password):
+            raise_error('ERR-AUTH-INVALID-PASSWORD')
+
+    if password1 != password2:
+        raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
+
+    user.set_password(password1)
+    user.save()
+
+
+def forgot_password(user, otp, password1, password2):
+    if password1 != password2:
+        raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
+    
+    stored_otp = Email.get_otp(email=user.email)
+    if stored_otp == otp:
+        user.set_password(password1)
+        user.save()
+    else:
+        raise_error('ERR-AUTH-INVALID-OTP')
 
 def registration(operation, phone, OTP=None, first_name=None, last_name=None, email=None, password=None):
     if operation == 'VERIFY_USER_REGISTRATION_SEND_OTP':

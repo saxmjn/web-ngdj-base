@@ -14,5 +14,6 @@ urlpatterns = [
     url(r'^linkedin-auth-mobile/', rest_views.linkedin_auth_mobile),
     url(r'^registration/', rest_views.registration),
     url(r'^password-set/', rest_views.set_password),
-    url(r'^password-reset/', rest_views.reset_password)
+    url(r'^password-reset/', rest_views.reset_password),
+    url(r'^password-forgot/', rest_views.forgot_password)
 ]

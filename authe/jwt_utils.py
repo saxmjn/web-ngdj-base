@@ -7,7 +7,7 @@ from rest_framework_jwt.settings import api_settings
 from rest_framework import authentication, exceptions, permissions
 from rest_framework_jwt.compat import get_username, get_username_field
 # PROJECT
-from app.utils import raise_error
+from commune.utils import raise_error
 
 
 def jwt_payload_handler(user):

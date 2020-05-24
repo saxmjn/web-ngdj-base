@@ -23,13 +23,13 @@ class EmailAuth(APIView):
         first_name = get_value_or_default(request.data, 'first_name', None)
         last_name = get_value_or_default(request.data, 'last_name', None)
         username = get_value_or_default(request.data, 'username', None)
+        otp = get_value_or_default(request.data, 'otp', None)
 
         try:
-            user = utils.create_user_from_email(username=username, email=email, first_name=first_name,
+            context = utils.create_user_from_email(username=username, email=email, first_name=first_name,
                                                 last_name=last_name, password1=password1,
-                                                password2=password2)
-            context = {'username': user.username, 'password': password1}
-            return Response(context, status=status.HTTP_200_OK)
+                                                password2=password2, otp=otp)
+            return Response(success_resp(data=context), status=status.HTTP_200_OK)
         except ValueError as ve:
             errors = create_error_object(str(ve))
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
@@ -40,7 +40,6 @@ class EmailAuth(APIView):
     def post(self, request):
         email = get_value_or_404(request.data, 'email')
         password = get_value_or_404(request.data, 'password')
-
         try:
             context = utils.get_user_from_email(email=email, password=password)
             return Response(success_resp(data=context), status=status.HTTP_200_OK)
@@ -60,13 +59,13 @@ class PhoneAuth(APIView):
         first_name = get_value_or_default(request.data, 'first_name', None)
         last_name = get_value_or_default(request.data, 'last_name', None)
         username = get_value_or_default(request.data, 'username', None)
+        otp = get_value_or_default(request.data, 'otp')
 
         try:
-            user = utils.create_user_from_phone(phone_number=phone_number, username=username,
+            context = utils.create_user_from_phone(phone_number=phone_number, username=username,
                                                        email=email, first_name=first_name,
                                                 last_name=last_name, password1=password1,
-                                                password2=password2)
-            context = {'username': user.username, 'password': password1}
+                                                password2=password2, otp=otp)
             return Response(success_resp(data=context), status=status.HTTP_200_OK)
         except ValueError as ve:
             return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)
@@ -187,14 +186,25 @@ def reset_password(request):
         password1 = get_value_or_404(request.data, 'password1')
         password2 = get_value_or_404(request.data, 'password2')
 
-        if not request.user.check_password(old_password):
-            raise_error('ERR-AUTH-003')
+        utils.reset_password(user=request.user, old_password=old_password, password1=password1, password2=password2)
+        context = {'message': 'Password successfully changed'}
+        return Response(success_resp(data=context), status=status.HTTP_200_OK)
+    except ValueError as ve:
+        return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)
 
-        if password1 != password2:
-            raise_error('ERR-AUTH-004')
 
-        request.user.set_password(password1)
-        request.user.save()
+@api_view(['POST'])
+@authentication_classes([jwt_utils.JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def forgot_password(request):
+    try:
+        otp = get_value_or_404(request.data, 'otp')
+        password1 = get_value_or_404(request.data, 'password1')
+        password2 = get_value_or_404(request.data, 'password2')
+
+        utils.forgot_password(user=request.user, otp=otp, password1=password1, password2=password2)
         context = {'message': 'Password successfully changed'}
         return Response(success_resp(data=context), status=status.HTTP_200_OK)
     except ValueError as ve:

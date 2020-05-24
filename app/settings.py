@@ -295,5 +295,4 @@ else:
 
         ON_DEVELOPMENT = True
     except:
-        print(2)
         pass

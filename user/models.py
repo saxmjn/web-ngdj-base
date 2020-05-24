@@ -44,7 +44,6 @@ class UserTag(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(AUTH_USER_MODEL, unique=True, on_delete=models.CASCADE)
-    type = models.CharField(max_length=250, choices=constants.user_type_choices, null=True, blank=True)
     inviter = models.ForeignKey(AUTH_USER_MODEL, null=True, blank=True, related_name='user_inviter', on_delete=models.CASCADE)
     birth = models.DateField(null=True, blank=True)
     sex = models.CharField(max_length=100, choices=constants.sex_choices, null=True, blank=True)
@@ -58,20 +57,10 @@ class UserProfile(models.Model):
     signup_done = models.BooleanField(default=0)
     phone_number = models.CharField(max_length=250, null=True, blank=True)
     phone_code = models.CharField(max_length=250, null=True, blank=True)
-    phone_otp = models.CharField(max_length=6, null=True, blank=True)
     phone_verified = models.BooleanField(default=False)
-    category = models.ForeignKey(Category, blank=True, null=True, on_delete=models.CASCADE)
-    categories = models.ManyToManyField(Category, blank=True, null=True, related_name='multiple_categories')
     authorised = models.NullBooleanField(blank=True)
-    editor_pick = models.BooleanField(default=False)
     read_notification_count = models.PositiveIntegerField(default=0)
     device_token = models.TextField(null=True, blank=True)
-    permission_phone_public = models.BooleanField(default=True)
-    permission_email_public = models.BooleanField(default=True)
-    permission_stories_updates = models.BooleanField(default=True)
-    permission_brands_updates = models.BooleanField(default=True)
-    permission_events_updates = models.BooleanField(default=True)
-    permission_product_updates = models.BooleanField(default=True)
     active = models.BooleanField(default=True)
     last_opened_at = models.DateTimeField(auto_now_add=True, editable=False, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)
@@ -196,7 +185,7 @@ class UserProfile(models.Model):
 
     def get_profile_image(self):
         # return self.profile_pic_url
-        image = 'https://s3.ap-south-1.amazonaws.com/cmn-user-profile-image/{}.png'.format(self.user.username)
+        image = 'link-to-your-s3-bucket/{}.png'.format(self.user.username)
         return image
 
     def get_inviter(self):
@@ -369,8 +358,6 @@ class UserProfile(models.Model):
 
         user = User.objects.create(username=username, email=email, first_name=first_name, last_name=last_name)
         user_profile = cls.objects.create(user=user)
-        setup_user_on_firebase(user)
-        slack.post_to_slack('NEW_USER', user)
         return user_profile
 
     @classmethod
@@ -424,18 +411,29 @@ class UserProfile(models.Model):
             user.save()
 
     @classmethod
-    def update_email(cls, user, email):
-        if not validate_email(email=email):
-            raise_error('ERR-GNRL-002')
-        if user is None or email is None:
+    def update_email(cls, user, new_email, otp, password):
+        if user is None or new_email is None or otp is None  or password is None:
             return
+        
+        if not validate_email(email=new_email):
+            raise_error('ERR-GNRL-IVALID-EMAIL')
+        
+        stored_otp = Email.get_otp(email=new_email)
+        if stored_otp != otp:
+            raise_error('ERR-AUTH-INVALID-OTP')
+        
+        if not user.check_password(password):
+            raise_error('ERR-AUTH-INVALID-PASSWORD')
         try:
-            user_obj = User.objects.get(email=email)
+            user_obj = User.objects.get(email=new_email)
             if user != user_obj:
-                raise_error('ERR-USER-007')
+                raise_error('ERR-USER-OTHER-WITH-EMAIL')
+            else:
+                raise_error('ERR-USER-YOU-WITH-EMAIL')
         except ObjectDoesNotExist:
-            user.email = email
-            user.save()
+           user.email = new_email
+           user.save()
+
 
     def update_phone(self, phone, OTP):
         stored_phone = Phone.create(phone=phone)
@@ -496,15 +494,10 @@ class UserProfile(models.Model):
     @classmethod
     def update(cls, user, first_name=None, last_name=None, username=None, email=None, profile_image=None,
                heading=None, summary=None, sex=None, city_code=None, location=None,
-               birth=None,
-               category_code=None, category_code_list=None,
-               permission_stories_updates=None, permission_brands_updates=None, permission_events_updates=None,
-               permission_product_updates=None, permission_phone_public=None, permission_email_public=None,
-               device_token=None):
+               birth=None, category_code=None, category_code_list=None, device_token=None):
+        
         obj = cls.get_from_user(user=user)
-
         cls.update_username(user=user, username=username)
-        cls.update_email(user=user, email=email)
         obj.update_category(category_code=category_code)
         obj.update_categories(categories_list=category_code_list)
         obj.update_city(city_code=city_code)
@@ -525,18 +518,6 @@ class UserProfile(models.Model):
             obj.birth = get_datetime(birth)
         if sex:
             obj.sex = sex
-        if permission_stories_updates is not None:
-            obj.permission_stories_updates = to_bool(permission_stories_updates)
-        if permission_brands_updates is not None:
-            obj.permission_brands_updates = to_bool(permission_brands_updates)
-        if permission_events_updates is not None:
-            obj.permission_events_updates = to_bool(permission_events_updates)
-        if permission_product_updates is not None:
-            obj.permission_product_updates = to_bool(permission_product_updates)
-        if permission_phone_public is not None:
-            obj.permission_phone_public = to_bool(permission_phone_public)
-        if permission_email_public is not None:
-            obj.permission_email_public = to_bool(permission_email_public)
         if device_token is not None:
             obj.device_token = device_token
         obj.modified = general_datetime.now

@@ -3,12 +3,10 @@ import uuid
 # DJANGO
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-
-from . import utils
 # PROJECT
-
+from . import utils
 from app.fields import UUIDField
-from app.utils import validate_get_phone, random_with_N_digits
+from app.utils import validate_get_phone, random_with_N_digits, validate_email
 
 
 class File(models.Model):
@@ -47,9 +45,9 @@ class File(models.Model):
         else:
             file.delete()
             raise ValueError('No bucket found')
-        access_control = 'public-read';
-        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA';
-        AWSSecretKey = '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';
+        access_control = 'public-read'
+        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA'
+        AWSSecretKey = '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'
         url = 'https://%s.s3.amazonaws.com/%s?AWSAccessKeyId=%s' % (S3_BUCKET, file.uuid, AWSAccessKeyId)
 
         file.set_url()
@@ -85,6 +83,31 @@ class File(models.Model):
             return None
         return url
 
+
+class Email(models.Model):
+    email = models.CharField(max_length=250, unique=True)
+    otp = models.CharField(max_length=250)
+    created = models.DateTimeField(auto_now_add=True, editable=False)
+    modified = models.DateTimeField(auto_now_add=True, editable=True)
+
+    @staticmethod
+    def create(email, send_otp=False):
+        validate_email(email)
+        try:
+            obj = Email.objects.get(email=email)
+        except ObjectDoesNotExist:
+            obj = Email.objects.create(email=email, otp=random_with_N_digits(6))
+        if send_otp:
+            pass
+        return obj
+
+    @staticmethod
+    def get_otp(email):
+        try:
+            obj = Email.objects.get(email=email)
+        except ObjectDoesNotExist:
+            raise_error('ERR-DJNG-002')
+        return obj.otp
 
 class Phone(models.Model):
     number = models.CharField(max_length=250)

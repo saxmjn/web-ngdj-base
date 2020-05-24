@@ -5,6 +5,7 @@ from . import rest_views
 urlpatterns = [
     url(r'phone-verification/$', rest_views.check_phone_verification),
     url(r'phone-update/$', rest_views.update_phone),
+    url(r'email-update/$', rest_views.update_email),
     #
     url(r'^info/$', rest_views.get_user),
     #

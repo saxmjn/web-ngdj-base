@@ -52,6 +52,23 @@ def update_phone(request):
         return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['PUT'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_email(request):
+    email = get_value_or_404(request.data, 'email')
+    otp = get_value_or_404(request.data, 'otp')
+    password = get_value_or_404(request.data, 'password')
+    try:
+        models.UserProfile.update_email(user=request.user, new_email=email, otp=otp, password=password)
+        context = {'message': 'Email updated successfully'}
+        return Response(success_resp(data=context), status=status.HTTP_200_OK)
+    except ValueError as ve:
+        return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_user_tags(request):
