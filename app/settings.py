@@ -197,12 +197,6 @@ redis_url = get_from_environment('REDISCLOUD_URL')
 CELERY_BROKER_URL = get_from_environment('REDISCLOUD_URL')
 CELERY_ACCEPT_CONTENT = ['pickle', 'json', 'application/text']
 
-# -----------------------------
-# STREAM
-# -----------------------------
-STREAM_API_KEY = 'w6yet6kz97m3'
-STREAM_API_SECRET = 'mg5rau759w5gzdn6kymc9tndbkg2sjrpz7gawrya8t3m9g5gruyj4s35tqjwbbqj'
-
 
 # -----------------------------------------------------------
 # INTERNATIONALIZATION
@@ -235,19 +229,29 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # --------------------------------------------------------
-# VENDOR ATTRIBUTES
+# LINKEDIN
 # --------------------------------------------------------
 # LinkedIn
 LINKEDIN = {
-    'client_id': '818oixcpfzf7vx',
-    'client_secret': 'zlN1ncVkmqiqUZiX'
+    'client_id': 'your-linkedin-client-id',
+    'client_secret': 'your-linkedin-client-secret'
 }
+
+# -----------------------------
+# STREAM
+# -----------------------------
+STREAM_API_KEY = 'your-stream-api-key'
+STREAM_API_SECRET = 'your-stream-api-secret'
 
 
 # --------------------------------------------------------
 # FIREBASE
 # --------------------------------------------------------
 FIREBASE_PROJECT_ID = 'your-firebase-project-id'
+
+# --------------------------------------------------------
+# AWS
+# --------------------------------------------------------
 
 # --------------------------------------------------------
 # AUTHENTICATION & PERMISSION
