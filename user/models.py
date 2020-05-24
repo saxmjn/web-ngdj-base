@@ -232,35 +232,27 @@ class UserProfile(models.Model):
             query = UserProfile.objects.get(username__iexact=username)
             return query
         except User.MultipleObjectsReturned:
-            raise_error('ERR-DJNG-003')
+            raise_error('ERR-MULTIPLE-OBJECTS')
         except ObjectDoesNotExist:
             return None
 
     @staticmethod
     def match_user_from_email(email):
         if not validate_email(email):
-            raise_error('ERR-GNRL-002')
+            raise_error('ERR-GNRL-INVALID-EMAIL')
 
         try:
             query = User.objects.get(email__iexact=email).userprofile
             return query
         except User.MultipleObjectsReturned:
-            raise_error('ERR-DJNG-003')
-        except ObjectDoesNotExist:
-            return None
-
-    @staticmethod
-    def get_user_from_phone_number(phone_number, phone_code):
-        try:
-            query = UserProfile.objects.filter(phone_number=phone_number, phone_code=phone_code)
-            return query.first()
+            raise_error('ERR-MULTIPLE-OBJECTS')
         except ObjectDoesNotExist:
             return None
 
     @staticmethod
     def match_user_from_phone(phone):
         if not validate_phone(phone):
-            raise_error('ERR-GNRL-002')
+            raise_error('ERR-GNRL-INVALID-PHONE')
 
         phone_obj = Phone.create(phone)
 
@@ -269,7 +261,7 @@ class UserProfile(models.Model):
                                             phone_code=phone_obj.code)
             return query
         except User.MultipleObjectsReturned:
-            raise_error('ERR-DJNG-003')
+            raise_error('ERR-MULTIPLE-OBJECTS')
         except ObjectDoesNotExist:
             return None
 
@@ -348,11 +340,11 @@ class UserProfile(models.Model):
     @classmethod
     def create(cls, email, first_name, last_name, username=None, phone=None):
         if phone and UserProfile.match_user_from_phone(phone):
-            raise_error('ERR-USER-004')
+            raise_error('ERR-USER-OTHER-WITH-PHONE')
         if UserProfile.match_user_from_email(email=email):
-            raise_error('ERR-USER-005')
+            raise_error('ERR-USER-OTHER-WITH-EMAIL')
         if username and UserProfile.match_user_from_username(username):
-            raise_error('ERR-USER-008')
+            raise_error('ERR-USER-OTHER-WITH-USERNAME')
 
         if username is None:
             username = UserProfile.get_random_username(first_name)
@@ -362,15 +354,25 @@ class UserProfile(models.Model):
         return user_profile
 
     @classmethod
-    def create_with_phone(cls, phone_number, email, first_name, last_name, username=None, phone_otp=None):
+    def create_from_email(cls, email, first_name, last_name, username=None, otp=None):
+        stored_email = Email.create(email=email)
+
+        if otp and (stored_email.otp != otp):
+            raise_error('ERR-AUTH-INVALID-OTP')
+
+        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
+        return user_profile
+
+    @classmethod
+    def create_with_phone(cls, phone_number, email, first_name, last_name, username=None, otp=None):
         stored_phone = Phone.create(phone=phone_number)
-        if phone_otp and (stored_phone.otp != phone_otp):
-            raise_error('ERR-AUTH-005')
+        if otp and (stored_phone.otp != otp):
+            raise_error('ERR-AUTH-INVALID-OTP')
         user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
         user_profile.phone_number = stored_phone.number
         user_profile.phone_code = stored_phone.code
         user_profile.phone_otp = stored_phone.otp
-        if phone_otp:
+        if otp:
             user_profile.phone_verified = True
         user_profile.save()
         return user_profile
@@ -378,25 +380,13 @@ class UserProfile(models.Model):
     @classmethod
     def admin_create(cls, first_name, last_name, email, profile_image, heading, category_code,
                      username=None, phone_number=None):
-        if UserProfile.match_user_from_phone(phone_number) is not None:
-            raise_error('ERR-USER-004')
-        if UserProfile.match_user_from_email(email=email) is not None:
-            raise_error('ERR-USER-005')
-        try:
-            user = User.objects.get(username=username)
-            raise_error('ERR-USER-002')
-        except User.MultipleObjectsReturned:
-            raise_error('ERR-DJNG-003')
-        except ObjectDoesNotExist:
-            if username is None and email is not None:
+        if username is None and email is not None:
                 username = UserProfile.get_random_username_email(first_name)[0]
-            elif username is None and email is None:
-                username, email = UserProfile.get_random_username_email(first_name)
-            user = User.objects.create(username=username, email=email, first_name=first_name, last_name=last_name)
-            user_profile = cls.objects.create(user=user, authorised=True)
+        elif username is None and email is None:
+            username, email = UserProfile.get_random_username_email(first_name)
 
-        cls.update(user=user, first_name=first_name, last_name=last_name, profile_image=profile_image, heading=heading,
-                   category_code=category_code)
+        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
+        cls.update(user=user_profile.user, profile_image=profile_image, heading=heading, category_code=category_code)
         return user_profile
 
     @classmethod
@@ -406,7 +396,7 @@ class UserProfile(models.Model):
         try:
             user_obj = User.objects.get(username=username)
             if user != user_obj:
-                raise_error('ERR-USER-007')
+                raise_error('ERR-USER-OTHER-WITH-USERNAME')
         except ObjectDoesNotExist:
             user.username = username
             user.save()
