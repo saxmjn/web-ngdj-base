@@ -5,6 +5,14 @@ today = datetime.combine(date.today(), datetime.min.time())
 tomorrow = today + timedelta(days=1)
 now = datetime.now()
 
+
+def to_epoch(datetime_iso, timezone=None):
+    datetime_obj = create_datetime_from_iso(datetime_iso)
+    base_datetime_obj = create_datetime(1970, 1, 1)
+    epoch_time = (datetime_obj - base_datetime_obj).total_seconds()
+    return epoch_time
+
+
 def get_datetime(date):
     import datetime
     arr = date.split('-')

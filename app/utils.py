@@ -25,6 +25,11 @@ def get_value_or_default(dict_, key, default=None):
     return ret
 
 
+def log(text, show=True):
+    if show:
+        print(text)
+
+
 def log_error(text):
     logger.error(text)
 
