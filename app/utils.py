@@ -145,9 +145,9 @@ def validate_get_phone(phone):
     phone_number = None
     phone_code = None
     if not validate_phone(phone):
-        raise_error('ERR-GNRL-001')
+        raise_error('ERR-GNRL-INVALID-PHONE')
     elif len(phone) < 10:
-        raise_error('ERR-GNRL-001')
+        raise_error('ERR-GNRL-INVALID-PHONE')
     elif phone[0] != '+' and len(phone) == 10:
         phone_number = phone
         phone_code = '91'
@@ -161,7 +161,7 @@ def validate_get_phone(phone):
         phone_number = phone[3:]
         phone_code = phone[1:3]
     elif not phone_number or not phone_code:
-        raise_error('ERR-GNRL-001')
+        raise_error('ERR-GNRL-INVALID-PHONE')
 
     data = {'phone_number': phone_number, 'phone_code': phone_code}
     return data

@@ -70,6 +70,7 @@ ERROR_CONFIG = {
     'ERR-GNRL-IVALID-EMAIL': ("Invalid Email Address", "Error Message"),
     'ERR-AUTH-INVALID-CREDENTIALS': ("Invalid Credentials", "Error Message"),
     'ERR-AUTH-002': ("Unsuccessful exchange of Authorization Code for an Access Token", "Error Message"),
+    'ERR-AUTH-DETAIL-MISSING': ("Important Details missing", "Error Message"),
     'ERR-AUTH-INVALID-PASSWORD': ("Incorrect password", "Error Message"),
     'ERR-AUTH-UNMATCHED-PASSWORD': ("Passwords do not match", "Error Message"),
     'ERR-AUTH-INVALID-OTP': ("Invalid OTP", "Error Message"),

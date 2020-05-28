@@ -6,7 +6,7 @@ from django.db import models
 # PROJECT
 from . import utils
 from app import _fields as fields
-from app.utils import validate_get_phone, random_with_N_digits, validate_email
+from app.utils import validate_get_phone, random_with_N_digits, validate_email, raise_error
 
 
 class File(models.Model):
@@ -102,12 +102,12 @@ class Email(models.Model):
         return obj
 
     @staticmethod
-    def get_otp(email):
+    def get_email(email):
         try:
             obj = Email.objects.get(email=email)
         except ObjectDoesNotExist:
             raise_error('ERR-DJNG-002')
-        return obj.otp
+        return obj
 
 class Phone(models.Model):
     number = models.CharField(max_length=250)
@@ -131,7 +131,14 @@ class Phone(models.Model):
         if send_otp:
             utils.msg91_phone_otp_verification(phone=obj.number, OTP=obj.otp)
         return obj
-
+    
+    @staticmethod
+    def get_phone(phone_number, phone_code):
+        try:
+            obj = Phone.objects.get(number=phone_number, code=phone_code)
+            return obj
+        except ObjectDoesNotExist:
+            raise_error('ERR-DJNG-002')
 
 class Tag(models.Model):
     code = models.CharField(unique=True, max_length=100)

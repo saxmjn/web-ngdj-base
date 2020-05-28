@@ -9,12 +9,9 @@ from django.conf import settings
 from general.utils import msg91_phone_otp_verification
 from . import jwt_utils
 from app import constants
-from app.utils import raise_error
+from app.utils import raise_error, validate_get_phone
 from general.models import Email
 from user.models import UserProfile, UserLinkedInData, UserGoogleData
-
-logger = logging.getLogger("application")
-
 
 def get_or_create_user_from_google(data):
     try:
@@ -118,10 +115,9 @@ def get_or_create_user_from_linkedin_mob(user_id, email, first_name, last_name, 
         raise_error(code='ERR0006')
 
 
-def create_user_from_email(username, email, first_name, last_name, password1, password2, otp):
+def create_user_from_email(email, first_name, last_name, password1, password2, otp=None, phone=None, username=None):
     if password1 != password2:
         raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
-
     user = UserProfile.create_from_email(email=email, first_name=first_name, last_name=last_name, username=username, otp=otp).user
     user.set_password(password1)
     user.save()
@@ -146,11 +142,10 @@ def get_user_from_email(email, password):
         raise_error('ERR-AUTH-INVALID-PASSWORD')
 
 
-def create_user_from_phone(phone_number, username, email, first_name, last_name, password1, password2, otp):
+def create_user_from_phone(phone, first_name, last_name, password1, password2, otp=None, email=None, username=None):
     if password1 != password2:
         raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
-
-    user = UserProfile.create_with_phone(phone_number=phone_number, email=email, first_name=first_name, last_name=last_name, username=username, otp=otp).user
+    user = UserProfile.create_with_phone(phone=phone, email=email, first_name=first_name, last_name=last_name, username=username, otp=otp).user
     user.set_password(password1)
     user.save()
     token = jwt_utils.get_token_for_user(user)
@@ -158,10 +153,12 @@ def create_user_from_phone(phone_number, username, email, first_name, last_name,
     return data
 
 
-def get_user_from_phone(phone_number, password=None, phone_otp=None):
+def get_user_from_phone(phone, password=None, phone_otp=None):
     if not password or not phone_otp:
         raise_error('ERR-AUTH-INVALID-CREDENTIALS')
-    user_profile = UserProfile.match_user_from_phone(phone=phone_number)
+    
+    phone_data = validate_get_phone(phone)
+    user_profile = UserProfile.match_user_from_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code'])
 
     if user_profile is None:
         raise_error('ERR-USER-NOT-FOUND')
@@ -178,6 +175,25 @@ def get_user_from_phone(phone_number, password=None, phone_otp=None):
     else:
         raise_error('ERR-AUTH-INVALID-PASSWORD')
 
+
+def signup_user(first_name, last_name, password1, password2, otp=None, email=None, phone=None, username=None, phone_otp=None, email_otp=None):
+    if password1 != password2:
+        raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
+
+    user = UserProfile.create(phone=phone, email=email, first_name=first_name, last_name=last_name, username=username, phone_otp=phone_otp, email_otp=email_otp).user
+    user.set_password(password1)
+    user.save()
+    token = jwt_utils.get_token_for_user(user)
+    data = {'username': user.username, 'token': token, 'user_id': user.id}
+    return data
+
+def singin_user(password, email=None, phone=None):
+    if not email and not phone:
+        raise_error('ERR-AUTH-DETAIL-MISSING')
+    if email:
+        return get_user_from_email(email=email, password=password)
+    else:
+        return get_user_from_phone(phone=phone, password=password)
 
 def reset_password(user, old_password, password1, password2):
     if not user.check_password(old_password):
@@ -207,10 +223,10 @@ def registration(operation, phone, OTP=None, first_name=None, last_name=None, em
         context = {'user_registered': data['user_registered']}
         return context
     elif operation == 'USER_SIGNIN':
-        data = get_user_from_phone(phone_number=phone, phone_otp=OTP, password=password)
+        data = get_user_from_phone(phone=phone, phone_otp=OTP, password=password)
         return data
     elif operation == 'USER_SIGNUP':
-        user = UserProfile.create_with_phone(phone_number=phone, phone_otp=OTP, email=email,
+        user = UserProfile.create_with_phone(phone=phone, otp=OTP, email=email,
                                                      first_name=first_name,
                                                      last_name=last_name).user
         if password:

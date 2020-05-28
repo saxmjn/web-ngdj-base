@@ -13,6 +13,45 @@ from . import utils, jwt_utils
 logger = logging.getLogger(__name__)
 
 
+class Auth(APIView):
+    permission_classes = (AllowAny,)
+
+    def put(self, request, format=None):
+        password1 = get_value_or_404(request.data, 'password1')
+        password2 = get_value_or_404(request.data, 'password2')
+        email = get_value_or_default(request.data, 'email', None)
+        phone = get_value_or_default(request.data, 'phone')
+        first_name = get_value_or_default(request.data, 'first_name', None)
+        last_name = get_value_or_default(request.data, 'last_name', None)
+        username = get_value_or_default(request.data, 'username', None)
+        phone_otp = get_value_or_default(request.data, 'phone_otp', None)
+        email_otp = get_value_or_default(request.data, 'email_otp', None)
+
+        try:
+            context = utils.signup_user(username=username, email=email, phone=phone, first_name=first_name,
+                                                last_name=last_name, password1=password1,
+                                                password2=password2, phone_otp=phone_otp, email_otp=email_otp)
+            return Response(success_resp(data=context), status=status.HTTP_200_OK)
+        except ValueError as ve:
+            errors = create_error_object(str(ve))
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            errors = str(e)
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        email = get_value_or_default(request.data, 'email', None)
+        phone = get_value_or_default(request.data, 'phone_number', None)
+        password = get_value_or_404(request.data, 'password')
+
+        try:
+            context = utils.singin_user(email=email, phone=phone, password=password)
+            return Response(success_resp(data=context), status=status.HTTP_200_OK)
+        except ValueError as ve:
+            return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)
+
 class EmailAuth(APIView):
     permission_classes = (AllowAny,)
 
@@ -20,6 +59,7 @@ class EmailAuth(APIView):
         email = get_value_or_404(request.data, 'email')
         password1 = get_value_or_404(request.data, 'password1')
         password2 = get_value_or_404(request.data, 'password2')
+        phone = get_value_or_default(request.data, 'phone')
         first_name = get_value_or_default(request.data, 'first_name', None)
         last_name = get_value_or_default(request.data, 'last_name', None)
         username = get_value_or_default(request.data, 'username', None)
@@ -28,7 +68,7 @@ class EmailAuth(APIView):
         try:
             context = utils.create_user_from_email(username=username, email=email, first_name=first_name,
                                                 last_name=last_name, password1=password1,
-                                                password2=password2, otp=otp)
+                                                password2=password2, otp=otp, phone=phone)
             return Response(success_resp(data=context), status=status.HTTP_200_OK)
         except ValueError as ve:
             errors = create_error_object(str(ve))
@@ -52,17 +92,17 @@ class PhoneAuth(APIView):
     permission_classes = (AllowAny,)
 
     def put(self, request, format=None):
-        phone_number = get_value_or_404(request.data, 'phone_number')
-        email = get_value_or_404(request.data, 'email')
+        phone = get_value_or_404(request.data, 'phone_number')
         password1 = get_value_or_404(request.data, 'password1')
         password2 = get_value_or_404(request.data, 'password2')
+        email = get_value_or_default(request.data, 'email', None)
         first_name = get_value_or_default(request.data, 'first_name', None)
         last_name = get_value_or_default(request.data, 'last_name', None)
         username = get_value_or_default(request.data, 'username', None)
         otp = get_value_or_default(request.data, 'otp')
 
         try:
-            context = utils.create_user_from_phone(phone_number=phone_number, username=username,
+            context = utils.create_user_from_phone(phone=phone, username=username,
                                                        email=email, first_name=first_name,
                                                 last_name=last_name, password1=password1,
                                                 password2=password2, otp=otp)
@@ -73,11 +113,11 @@ class PhoneAuth(APIView):
             return Response(error_resp(message=str(e)), status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
-        phone_number = get_value_or_404(request.data, 'phone_number')
+        phone = get_value_or_404(request.data, 'phone_number')
         password = get_value_or_404(request.data, 'password')
 
         try:
-            context = utils.get_user_from_phone(phone_number=phone_number, password=password)
+            context = utils.get_user_from_phone(phone=phone, password=password)
             return Response(success_resp(data=context), status=status.HTTP_200_OK)
         except ValueError as ve:
             return Response(error_resp(message=str(ve)), status=status.HTTP_400_BAD_REQUEST)

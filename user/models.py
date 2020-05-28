@@ -53,6 +53,7 @@ class UserProfile(models.Model):
     location = models.CharField(max_length=100, null=True, blank=True)
     signup_stage = models.PositiveIntegerField(default=0)
     signup_done = models.BooleanField(default=0)
+    email_verified = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=250, null=True, blank=True)
     phone_code = models.CharField(max_length=250, null=True, blank=True)
     phone_verified = models.BooleanField(default=False)
@@ -235,9 +236,6 @@ class UserProfile(models.Model):
 
     @staticmethod
     def match_user_from_email(email):
-        if not validate_email(email):
-            raise_error('ERR-GNRL-INVALID-EMAIL')
-
         try:
             query = User.objects.get(email__iexact=email).userprofile
             return query
@@ -247,15 +245,10 @@ class UserProfile(models.Model):
             return None
 
     @staticmethod
-    def match_user_from_phone(phone):
-        if not validate_phone(phone):
-            raise_error('ERR-GNRL-INVALID-PHONE')
-
-        phone_obj = Phone.create(phone)
-
+    def match_user_from_phone(phone_number, phone_code):
         try:
-            query = UserProfile.objects.get(phone_number=phone_obj.number,
-                                            phone_code=phone_obj.code)
+            query = UserProfile.objects.get(phone_number=phone_number,
+                                            phone_code=phone_code)
             return query
         except User.MultipleObjectsReturned:
             raise_error('ERR-MULTIPLE-OBJECTS')
@@ -277,8 +270,13 @@ class UserProfile(models.Model):
 
     @staticmethod
     def phone_input(operation, phone, OTP=None):
+        if not validate_phone(phone):
+            raise_error('ERR-GNRL-INVALID-PHONE')
+
+        phone_obj = Phone.create(phone)
+
         if operation == 'VERIFY_USER_PHONE':
-            user_profile = UserProfile.match_user_from_phone(phone)
+            user_profile = UserProfile.match_user_from_phone(phone_obj.phone_number, phone_obj.phone_code)
 
             if not user_profile:
                 raise_error('ERR-USER-001')
@@ -297,15 +295,14 @@ class UserProfile(models.Model):
 
         elif operation == 'VERIFY_USER_REGISTRATION':
 
-            user_profile = UserProfile.match_user_from_phone(phone)
+            user_profile = UserProfile.match_user_from_phone(phone_obj.phone_number, phone_obj.phone_code)
             if user_profile:
                 data = {'user_registered': True, 'user_profile': user_profile}
             else:
                 data = {'user_registered': False, 'user_profile': user_profile}
 
         elif operation == 'SEND_PHONE_VERIFICATION_OTP':
-
-            user_profile = UserProfile.match_user_from_phone(phone)
+            user_profile = UserProfile.match_user_from_phone(phone_obj.phone_number, phone_obj.phone_code)
             if user_profile:
                 user_profile.set_phone_otp()
                 msg91_phone_otp_verification(phone=phone, OTP=user_profile.phone_otp)
@@ -318,7 +315,7 @@ class UserProfile(models.Model):
             return {'message': 'OTP Sent'}
 
         elif operation == 'VERIFY_USER_REGISTRATION_SEND_OTP':
-            user_profile = UserProfile.match_user_from_phone(phone)
+            user_profile = UserProfile.match_user_from_phone(phone_obj.phone_number, phone_obj.phone_code)
 
             if user_profile:
                 user_profile.set_phone_otp()
@@ -335,11 +332,31 @@ class UserProfile(models.Model):
         return data
 
     @classmethod
-    def create(cls, email, first_name, last_name, username=None, phone=None):
-        if phone and UserProfile.match_user_from_phone(phone):
-            raise_error('ERR-USER-OTHER-WITH-PHONE')
-        if UserProfile.match_user_from_email(email=email):
-            raise_error('ERR-USER-OTHER-WITH-EMAIL')
+    def create(cls, first_name, last_name, username=None, email=None, phone=None, email_otp=None, phone_otp=None):
+        email_verified = False
+        phone_verified = False
+        phone_data = None
+        if not email and not phone:
+            raise_error('ERR-AUTH-DETAIL-MISSING')
+        if email:
+            if not validate_email(email):
+                raise_error('ERR-GNRL-INVALID-EMAIL')
+            if email_otp and (Email.get_email(email=email).otp != email_otp):
+                raise_error('ERR-AUTH-INVALID-OTP')
+            else:
+                email_verified = True
+            if UserProfile.match_user_from_email(email=email):
+                raise_error('ERR-USER-OTHER-WITH-EMAIL')
+        if phone:
+            if not email:
+                email = UserProfile.get_random_username_email(first_name=first_name)[1]
+            phone_data = validate_get_phone(phone)
+            if phone_otp and (Phone.get_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code']).otp != phone_otp):
+                raise_error('ERR-AUTH-INVALID-OTP')
+            else:
+                phone_verified = True
+            if UserProfile.match_user_from_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code']):
+                raise_error('ERR-USER-OTHER-WITH-PHONE')
         if username and UserProfile.match_user_from_username(username):
             raise_error('ERR-USER-OTHER-WITH-USERNAME')
 
@@ -348,42 +365,35 @@ class UserProfile(models.Model):
 
         user = User.objects.create(username=username, email=email, first_name=first_name, last_name=last_name)
         user_profile = cls.objects.create(user=user)
-        return user_profile
-
-    @classmethod
-    def create_from_email(cls, email, first_name, last_name, username=None, otp=None):
-        stored_email = Email.create(email=email)
-
-        if otp and (stored_email.otp != otp):
-            raise_error('ERR-AUTH-INVALID-OTP')
-
-        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
-        return user_profile
-
-    @classmethod
-    def create_with_phone(cls, phone_number, email, first_name, last_name, username=None, otp=None):
-        stored_phone = Phone.create(phone=phone_number)
-        if otp and (stored_phone.otp != otp):
-            raise_error('ERR-AUTH-INVALID-OTP')
-        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
-        user_profile.phone_number = stored_phone.number
-        user_profile.phone_code = stored_phone.code
-        user_profile.phone_otp = stored_phone.otp
-        if otp:
+        if email_verified:
+            user_profile.email_verified = True
+        if phone_data:
+            user_profile.phone_number = phone_data['phone_number']
+            user_profile.phone_code = phone_data['phone_code']
+        if phone_verified:
+            user_profile.phone_otp = phone_otp
             user_profile.phone_verified = True
         user_profile.save()
         return user_profile
 
     @classmethod
-    def admin_create(cls, first_name, last_name, email, profile_image, heading, category_code,
-                     username=None, phone_number=None):
-        if username is None and email is not None:
-                username = UserProfile.get_random_username_email(first_name)[0]
-        elif username is None and email is None:
-            username, email = UserProfile.get_random_username_email(first_name)
+    def create_from_email(cls, email, first_name, last_name, phone=None, username=None, otp=None):
+        if not email:
+            raise_error('ERR-GNRL-IVALID-EMAIL')
+        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username, phone=phone, email_otp=otp)
+        return user_profile
 
-        user_profile = cls.create(email=email, first_name=first_name, last_name=last_name, username=username)
-        cls.update(user=user_profile.user, profile_image=profile_image, heading=heading, category_code=category_code)
+    @classmethod
+    def create_with_phone(cls, phone, first_name, last_name, username=None, otp=None, email=None,):
+        if not phone:
+            raise_error('ERR-GNRL-INVALID-PHONE')
+        user_profile = cls.create(phone=phone, email=email, first_name=first_name, last_name=last_name, username=username, phone_otp=otp)
+        return user_profile
+
+    @classmethod
+    def admin_create(cls, first_name, last_name, profile_image, heading, category_code, email=None,
+                     username=None, phone=None):
+        user_profile = cls.create(phone=phone, email=email, first_name=first_name, last_name=last_name, username=username)
         return user_profile
 
     @classmethod
@@ -406,7 +416,7 @@ class UserProfile(models.Model):
         if not validate_email(email=new_email):
             raise_error('ERR-GNRL-IVALID-EMAIL')
         
-        stored_otp = Email.get_otp(email=new_email)
+        stored_otp = Email.get_email(email=new_email).otp
         if stored_otp != otp:
             raise_error('ERR-AUTH-INVALID-OTP')
         
@@ -424,23 +434,21 @@ class UserProfile(models.Model):
 
 
     def update_phone(self, phone, OTP):
-        stored_phone = Phone.create(phone=phone)
+        phone_data = validate_get_phone(phone)
         if not OTP:
             raise_error('ERR-AUTH-005')
-        if stored_phone.otp != OTP:
-            raise_error('ERR-AUTH-005')
+        if OTP and (Phone.get_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code']).otp != OTP):
+                raise_error('ERR-AUTH-INVALID-OTP')
 
-        user_profile = UserProfile.match_user_from_phone(phone)
-        phone_data = validate_get_phone(phone)
+        user_profile = UserProfile.match_user_from_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code'])
         if user_profile is not None and user_profile != self:
-            raise_error('ERR-USER-007')
+            raise_error('ERR-USER-OTHER-WITH-PHONE')
         else:
             self.phone_code = phone_data['phone_code']
             self.phone_number = phone_data['phone_number']
             self.phone_otp = OTP
+            self.phone_verified = True
             self.save()
-
-        return {'message': 'Phone updated successfully'}
 
     def update_category(self, category_code):
         if category_code is None:
