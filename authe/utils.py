@@ -188,7 +188,7 @@ def signup_user(first_name, last_name, password1, password2, otp=None, email=Non
     return data
 
 def singin_user(password, email=None, phone=None):
-    if not email and not phone:
+    if not email or not phone:
         raise_error('ERR-AUTH-DETAIL-MISSING')
     if email:
         return get_user_from_email(email=email, password=password)

@@ -127,7 +127,7 @@ class Phone(models.Model):
         except ObjectDoesNotExist:
 
             obj = Phone.objects.create(number=phone_data['phone_number'],
-                                   code=phone_data['phone_code'], otp=random_with_N_digits(4))
+                                   code=phone_data['phone_code'], otp=random_with_N_digits(6))
         if send_otp:
             utils.msg91_phone_otp_verification(phone=obj.number, OTP=obj.otp)
         return obj

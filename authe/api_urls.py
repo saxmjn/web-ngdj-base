@@ -7,6 +7,7 @@ urlpatterns = [
     url(r'^api-token-auth/', obtain_jwt_token),
     url(r'^api-token-refresh/', refresh_jwt_token),
     url(r'^api-token-verify/', verify_jwt_token),
+    url(r'^auth/', rest_views.Auth.as_view()),
     url(r'^email-auth/', rest_views.EmailAuth.as_view()),
     url(r'^phone-auth/', rest_views.PhoneAuth.as_view()),
     url(r'^google-auth/', rest_views.GoogleAuth.as_view()),

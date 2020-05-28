@@ -1,5 +1,17 @@
 import requests
 import json
+from . import models
+from app import utils
+
+
+def get_otp(email=None, phone=None):
+    data = {'email_otp': None, 'phone_otp': None}
+    if email:
+        data['email_otp'] = models.Email.create(email=email).otp
+    if phone:
+        data['phone_otp'] = models.Phone.create(phone=phone).otp
+    
+    return data
 
 
 def msg91_phone_otp_verification(phone, OTP, email=None):

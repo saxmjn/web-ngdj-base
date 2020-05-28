@@ -360,7 +360,7 @@ class UserProfile(models.Model):
         if username and UserProfile.match_user_from_username(username):
             raise_error('ERR-USER-OTHER-WITH-USERNAME')
 
-        if username is None:
+         if username is None or not username:
             username = UserProfile.get_random_username(first_name)
 
         user = User.objects.create(username=username, email=email, first_name=first_name, last_name=last_name)

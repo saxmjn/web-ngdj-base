@@ -3,6 +3,7 @@ from . import rest_views
 
 
 urlpatterns = [
+    url(r'^otp/', rest_views.get_otp),
     url(r'^file/store/', rest_views.post_file),
     url(r'^category/list/', rest_views.get_categories),
     url(r'^city/list/', rest_views.get_cities),

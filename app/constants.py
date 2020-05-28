@@ -67,7 +67,7 @@ ERROR_CONFIG = {
     'ERR-DJNG-002': ("No Object found", "Error Message"),
     'ERR-MULTIPLE-OBJECTS': ("Multiple Objects Returned", "Error Message"),
     'ERR-GNRL-INVALID-PHONE': ("Invalid Phone Number", "Error Message"),
-    'ERR-GNRL-IVALID-EMAIL': ("Invalid Email Address", "Error Message"),
+    'ERR-GNRL-INVALID-EMAIL': ("Invalid Email Address", "Error Message"),
     'ERR-AUTH-INVALID-CREDENTIALS': ("Invalid Credentials", "Error Message"),
     'ERR-AUTH-002': ("Unsuccessful exchange of Authorization Code for an Access Token", "Error Message"),
     'ERR-AUTH-DETAIL-MISSING': ("Important Details missing", "Error Message"),

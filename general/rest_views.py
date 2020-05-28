@@ -8,11 +8,27 @@ from rest_framework.response import Response
 from authe.jwt_utils import JWTAuthentication
 from app.gen_utils import create_datetime_from_iso
 from app.utils import get_value_or_404, create_error_object, success_resp, error_resp, get_value_or_default
-from . import models
-from . import serializers
-from . import analytics
+from . import models, serializers, analytics, utils
 
 logger = logging.getLogger(__name__)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_otp(request):
+    try:
+        email = get_value_or_default(request.GET, 'email', None)
+        phone = get_value_or_default(request.GET, 'phone', None)
+
+        context = utils.get_otp(email=email, phone=phone)
+        return Response(context, status=status.HTTP_200_OK)
+    except ValueError as ve:
+        errors = create_error_object(str(ve))
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        errors = str(e)
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['POST'])
