@@ -6,9 +6,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 # Project
 from authe.jwt_utils import JWTAuthentication
-from app.gen_utils import create_datetime_from_iso
-from app.utils import get_value_or_404, create_error_object, success_resp, error_resp, get_value_or_default
-from . import models, serializers, analytics, utils
+from commune.utils import get_value_or_404, create_error_object, success_resp, error_resp, get_value_or_default
+from commune import _datetime as datetime
+from commune import _analytics as analytics
+from . import serializers, utils, models
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ def get_otp(request):
     except Exception as e:
         errors = str(e)
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @api_view(['POST'])
@@ -119,8 +119,8 @@ def post_newsletter_subscriber(request):
 @permission_classes([IsAuthenticated])
 def get_datetime_vs_users(request):
     try:
-        start = create_datetime_from_iso(get_value_or_default(request.data, 'start', None), 'Asia/Kolkata')
-        end = create_datetime_from_iso(get_value_or_default(request.data, 'end', None), 'Asia/Kolkata')
+        start = datetime.create_datetime_from_iso(get_value_or_default(request.data, 'start', None), 'Asia/Kolkata')
+        end = datetime.create_datetime_from_iso(get_value_or_default(request.data, 'end', None), 'Asia/Kolkata')
 
         data = analytics.get_user_data_for_datetime(start=start, end=end)
         context = {"analytics": data}
@@ -136,8 +136,8 @@ def get_datetime_vs_users(request):
 @permission_classes([IsAuthenticated])
 def get_last_opened_info(request):
     try:
-        start = create_datetime_from_iso(get_value_or_default(request.data, 'start', None), 'Asia/Kolkata')
-        end = create_datetime_from_iso(get_value_or_default(request.data, 'end', None), 'Asia/Kolkata')
+        start = datetime.create_datetime_from_iso(get_value_or_default(request.data, 'start', None), 'Asia/Kolkata')
+        end = datetime.create_datetime_from_iso(get_value_or_default(request.data, 'end', None), 'Asia/Kolkata')
 
         count = analytics.get_last_opened_info(start=start, end=end)
         context = {"count": count}

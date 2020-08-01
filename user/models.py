@@ -15,29 +15,10 @@ from app import constants
 from app import _datetime as datetime
 from app import _firebase as firebase
 from app.utils import (raise_error, validate_email, validate_get_phone, to_bool, validate_phone)
-from general.models import Category, Phone, City, Email
+from general.models import Phone, City, Email
 from general.utils import msg91_phone_otp_verification
 
 AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "authe.User")
-
-
-class UserTag(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=15, unique=True)
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-    modified = models.DateTimeField(auto_now_add=True, editable=True)
-
-    @classmethod
-    def get_from_code(cls, code):
-        try:
-            obj = cls.objects.get(code=code)
-        except ObjectDoesNotExist:
-            raise_error(code='ERR-USER-001')
-        return obj
-
-    @classmethod
-    def get_tags(cls):
-        return cls.objects.all()
 
 
 class UserProfile(models.Model):
@@ -46,7 +27,8 @@ class UserProfile(models.Model):
     birth = models.DateField(null=True, blank=True)
     sex = models.CharField(max_length=100, choices=constants.sex_choices, null=True, blank=True)
     language = models.CharField(max_length=100, choices=constants.language_choices, null=True, blank=True)
-    profile_pic_url = models.TextField(default=None, null=True, blank=True)
+    image = models.TextField(default=None, null=True, blank=True)
+    image_modified_at = models.DateTimeField(null=True, blank=True, editable=True)
     heading = models.CharField(max_length=50, null=True, blank=True)
     summary = models.TextField(null=True, blank=True)
     city = models.ForeignKey(City, null=True, blank=True, on_delete=models.CASCADE)
@@ -80,22 +62,6 @@ class UserProfile(models.Model):
         else:
             objs = query
         return objs
-
-    @staticmethod
-    def get_users_for_categories(category_ids, offset=None):
-        limit = 10
-        if len(category_ids):
-            query = UserProfile.objects.filter(category__in=category_ids, authorised=True)
-        else:
-            query = UserProfile.objects.filter(authorised=True)
-
-        if offset is not None:
-            users = query[offset: offset + limit]
-        else:
-            users = query
-
-        data = {'users': users, 'count': users.count()}
-        return data
 
     @staticmethod
     def get_users_suggestion():
@@ -391,7 +357,7 @@ class UserProfile(models.Model):
         return user_profile
 
     @classmethod
-    def admin_create(cls, first_name, last_name, profile_image, heading, category_code, email=None,
+    def admin_create(cls, first_name, last_name, profile_image, heading, email=None,
                      username=None, phone=None):
         user_profile = cls.create(phone=phone, email=email, first_name=first_name, last_name=last_name, username=username)
         return user_profile
@@ -450,32 +416,6 @@ class UserProfile(models.Model):
             self.phone_verified = True
             self.save()
 
-    def update_category(self, category_code):
-        if category_code is None:
-            return
-        try:
-            category = Category.objects.get(code=category_code)
-        except ObjectDoesNotExist:
-            raise ValueError('No category found')
-
-        self.category = category
-        self.save()
-
-    def update_categories(self, categories_list):
-        if categories_list is None:
-            return
-        categories = Category.objects.filter(code__in=categories_list)
-        existing = self.categories.all()
-        for e in existing:
-            self.categories.remove(e)
-            self.save()
-
-        self.categories.add(*categories)
-
-        for c in categories:
-            self.categories.add(c)
-            self.save()
-
     def update_city(self, city_code):
         if city_code is None:
             return
@@ -488,43 +428,40 @@ class UserProfile(models.Model):
         self.save()
 
     @classmethod
-    def update(cls, user, first_name=None, last_name=None, username=None, email=None, profile_image=None,
-               heading=None, summary=None, sex=None, city_code=None, location=None,
-               birth=None, category_code=None, category_code_list=None, device_token=None):
+    def update(cls, user, first_name=None, last_name=None, username=None, email=None, image=None, image_modified=False, heading=None, summary=None, sex=None, city_code=None, location=None, birth=None, device_token=None, last_opened_at=None):
         
         obj = cls.get_from_user(user=user)
         cls.update_username(user=user, username=username)
-        obj.update_category(category_code=category_code)
-        obj.update_categories(categories_list=category_code_list)
-        obj.update_city(city_code=city_code)
+
+    def store_data(self, first_name=None, last_name=None, username=None, email=None, image=None, image_modified=False, heading=None, summary=None, sex=None, city_code=None, location=None, birth=None, device_token=None, last_opened_at=None):
+        self.update_city(city_code=city_code)
 
         if first_name:
-            obj.user.first_name = first_name
+            self.user.first_name = first_name
         if last_name:
-            obj.user.last_name = last_name
-        if profile_image:
-            obj.profile_pic_url = profile_image
+            self.user.last_name = last_name
+        if image:
+            self.image = image
+        if image_modified:
+            self.image_modified = datetime.current_datetime('Asia/Kolkata')
         if heading:
-            obj.heading = heading
+            self.heading = heading
         if summary:
-            obj.summary = summary
+            self.summary = summary
         if location:
-            obj.location = location
+            self.location = location
         if birth:
-            obj.birth = datetime.get_datetime(birth)
+            self.birth = datetime.get_datetime(birth)
         if sex:
-            obj.sex = sex
+            self.sex = sex
         if device_token is not None:
-            obj.device_token = device_token
-        obj.modified = datetime.now
-        obj.user.save()
-        obj.save()
-        return obj
-
-    def update_datetime(self, operation, datetime):
-        if operation == 'NEW_BROADCAST':
-            self.last_broadcasted_at = datetime
-            self.save()
+            self.device_token = device_token
+        if last_opened_at is not None:
+            self.last_opened_at = last_opened_at
+        self.modified = datetime.now
+        self.user.save()
+        self.save()
+        return self
 
     def check_if_followed_by(self, follower):
         try:
@@ -537,7 +474,7 @@ class UserProfile(models.Model):
         from contacts.models import UserContact
         contact_pks = list(UserContact.get_contacts_on_tc(user=self.user)['contact_pks'])
         random_pks = list(
-            UserProfile.objects.filter(city=self.city, category=self.category).values_list('user', flat=True))
+            UserProfile.objects.filter(city=self.city).values_list('user', flat=True))
         following_pks = list(
             UserFollower.objects.filter(follower=self.user, active=True).values_list('user', flat=True))
 
@@ -548,267 +485,3 @@ class UserProfile(models.Model):
 
         data = {'suggestions': suggestions}
         return data
-
-
-class UserFollower(models.Model):
-    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
-    follower = models.ForeignKey(AUTH_USER_MODEL, related_name="following", on_delete=models.CASCADE)
-    active = models.BooleanField(default=False)
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-
-    class Meta:
-        unique_together = (('user', 'follower'),)
-
-    def is_user_expert(self):
-        return self.user.userprofile.is_expert()
-
-    def toggle_subscription_from_firebase(self):
-        topic = 'user-' + str(self.user.pk)
-        if self.active is True:
-            firebase.subscribe_to_topic(topic=topic, user=self.follower)
-        elif self.active is False:
-            firebase.unsubscribe_from_topic(topic=topic, user=self.follower)
-
-    @classmethod
-    def create(cls, followee, follower):
-        # If folowee and follower are same
-        if followee == follower:
-            raise ValueError('You cannot follow yourself')
-        obj, status = cls.objects.get_or_create(user=followee, follower=follower)
-        return obj
-
-    @classmethod
-    def update(cls, followee, follower):
-        obj = cls.create(followee, follower)
-        if obj.active is False or obj.active is None:
-            obj.active = True
-            obj.save()
-        elif obj.active is True:
-            obj.active = False
-            obj.save()
-        data = {'is_followed': obj.active}
-
-        print(data)
-
-        obj.toggle_subscription_from_firebase()
-        return data
-
-    @classmethod
-    def delete(cls, followee, follower):
-        try:
-            obj = cls.objects.get(user=followee, follower=follower)
-            obj.delete()
-        except:
-            raise ValueError('No such relation found')
-
-    @classmethod
-    def find_followers_pks(cls, user):
-        follower_pks = cls.objects.filter(user=user, active=True).values_list('follower', flat=True)
-        return follower_pks
-
-    @classmethod
-    def find_followers(cls, user):
-        follower_pks = cls.objects.filter(user=user, active=True).values_list('follower', flat=True)
-        followers = User.objects.filter(pk__in=follower_pks)
-        data = {'connections': followers, 'count': len(follower_pks)}
-        return data
-
-    @classmethod
-    def get_followers_count(cls, user):
-        count = cls.objects.filter(user=user, active=True).count()
-        return count
-
-    @classmethod
-    def find_followings(cls, user):
-        following_pks = cls.objects.filter(follower=user, active=True).values_list('user', flat=True)
-        followings = User.objects.filter(pk__in=following_pks)
-        data = {'connections': followings, 'count': len(following_pks)}
-        return data
-
-    @staticmethod
-    def get_connections(user, operation):
-        if operation == 'FIND_FOLLOWERS':
-            return UserFollower.find_followers(user=user)
-        elif operation == 'FIND_FOLLOWINGS':
-            return UserFollower.find_followings(user=user)
-
-    @staticmethod
-    def get_people(user, code, type):
-        if type == 'CITY':
-            people_pks = list(
-                UserProfile.objects.filter(city__code=code).values_list('user', flat=True))
-        elif type == 'INTEREST':
-            people_pks = list(
-                UserProfile.objects.filter(categories__code=code).values_list('user', flat=True))
-        else:
-            raise_error('')
-
-        following_pks = list(UserFollower.objects.filter(follower=user, active=True).values_list('user', flat=True))
-        follower_pks = list(UserFollower.objects.filter(user=user, active=True).values_list('follower', flat=True))
-
-        all_pks = list(set(list(set(following_pks).intersection(set(people_pks))) + list(
-            (set(follower_pks) - set(following_pks)).intersection(people_pks)) + list(
-            set(people_pks) - set(follower_pks) - set(following_pks))) - set([user.id]))
-
-        print('people_pks', people_pks)
-        print('following_pks', following_pks)
-        print('follower_pks', follower_pks)
-        print('all_pks', all_pks)
-
-        all = User.objects.filter(pk__in=all_pks)
-        data = {'all': all}
-        return data
-
-    @staticmethod
-    def get_connections_with_common(user, parameter):
-        if parameter == 'CITY':
-            people_pks = list(
-                UserProfile.objects.filter(city__code=user.userprofile.city.code).values_list('user', flat=True))
-        elif parameter == 'INTEREST':
-            people_pks = list(
-                UserProfile.objects.filter(category__code=user.userprofile.category.code).values_list('user',
-                                                                                                      flat=True))
-        else:
-            raise_error('')
-
-        following_pks = list(UserFollower.objects.filter(follower=user, active=True).values_list('user', flat=True))
-        follower_pks = list(UserFollower.objects.filter(user=user, active=True).values_list('follower', flat=True))
-
-        all_pks = list(set(list(set(following_pks).intersection(set(people_pks))) + list(
-            (set(follower_pks) - set(following_pks)).intersection(people_pks)) + list(
-            set(people_pks) - set(follower_pks) - set(following_pks))) - set([user.id]))
-
-        print('people_pks', people_pks)
-        print('following_pks', following_pks)
-        print('follower_pks', follower_pks)
-        print('all_pks', all_pks)
-
-        all = User.objects.filter(pk__in=all_pks)
-
-        data = {'all': all}
-        return data
-
-    @classmethod
-    def find_followings_and_status_updates(cls, user):
-        following_pks = cls.objects.filter(follower=user, active=True).values_list('user', flat=True)
-        followings = UserProfile.objects.filter(user_id__in=following_pks,
-                                                status_updated_at__gte=datetime.today,
-                                                status_updated_at__lt=datetime.tomorrow).exclude(
-            Q(status__isnull=True) | Q(status__exact='')).order_by('-status_updated_at')
-        data = {'followings': followings, 'count': followings.count()}
-        return data
-
-    @classmethod
-    def get_following_count(cls, user):
-        count = cls.objects.filter(follower=user, active=True).count()
-        return count
-
-    @classmethod
-    def check_if_follow(cls, followee, follower):
-        try:
-            obj = cls.objects.get(user=followee, follower=follower)
-            return obj.active
-        except ObjectDoesNotExist:
-            return None
-
-    @classmethod
-    def follow_users(cls, followees, follower):
-        for followee in followees:
-            cls.update(followee, follower, True)
-
-
-class UserGoogleData(models.Model):
-    """
-        Helps store the Data taken from Google for a User
-    """
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    uid = models.TextField(unique=True)
-    image_url = models.TextField(blank=True, null=True,
-                                 help_text="The image_url given by google")
-    id_token = models.TextField(blank=True, null=True,
-                                help_text="The id token given by google, this will expire in a short duration")
-    data = models.TextField(blank=True, help_text="The raw  API response coming in from about containing "
-                                                  "information about the User")
-
-    class Meta:
-        get_latest_by = "created"
-        ordering = ['-created']
-        verbose_name_plural = "User Google Data"
-        verbose_name = "User Google Data"
-
-    @staticmethod
-    def create(user, data):
-        try:
-            data['id']
-        except KeyError:
-            raise ValueError()
-
-        if data['email'] != user.email:
-            raise ValueError()
-
-        obj = UserGoogleData.objects.create(user_profile=user.userprofile, uid=data['id'],
-                                            image_url=data['image_url'], id_token=data['id_token'],
-                                            data=json.dumps(data))
-        return obj
-
-    def update(self, extra_data):
-        self.id_token = extra_data['id_token']
-        self.image_url = extra_data['image_url']
-        self.data = json.dumps(extra_data)
-        self.save()
-
-
-class UserFacebookData(models.Model):
-    """
-    Helps store the Data taken from Facebook for a User
-    """
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(AUTH_USER_MODEL, unique=True, on_delete=models.CASCADE)
-    uid = models.TextField(help_text="The unique ID of the Facebook Profile of the User")
-    data = models.TextField(blank=True, help_text="The raw  API response coming in from about containing "
-                                                  "information about the User")
-    token = models.TextField(help_text="The access token given by Facebook, this will expire in a short duration")
-
-    class Meta:
-        get_latest_by = "created"
-        ordering = ['-created']
-        verbose_name_plural = "User Facebook Data"
-        verbose_name = "User Facebook Data"
-
-
-class UserLinkedInData(models.Model):
-    """
-    Helps store the Data taken from LinkedIn for a User
-    """
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(AUTH_USER_MODEL, unique=True, on_delete=models.CASCADE)
-    uid = models.TextField(help_text="The unique ID of the LinkedIn Profile of the User")
-    data = models.TextField(null=True, blank=True, help_text="The raw  API response coming in from about containing "
-                                                             "information about the User")
-    token = models.TextField(null=True,
-                             help_text="The access token given by LinkedIn, this will expire in a short duration")
-
-    class Meta:
-        get_latest_by = "created"
-        ordering = ['-created']
-        verbose_name_plural = "User LinkedIn Data"
-        verbose_name = "User LinkedIn Data"
-
-    @classmethod
-    def update(cls, uid, user, data=None, token=None):
-        try:
-            obj = cls.objects.get(uid=uid)
-            if obj.user != user:
-                raise_error(code='ERR0003')
-            else:
-                obj.token = token
-                obj.data = data
-                obj.save()
-        except ObjectDoesNotExist:
-            obj = cls.objects.create(uid=uid, user=user, token=token, data=data)
-
-        return obj

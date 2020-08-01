@@ -1,15 +1,14 @@
 import requests
 import json
 from . import models
-from app import utils
-
+from commune import utils
 
 def get_otp(email=None, phone=None):
     data = {'email_otp': None, 'phone_otp': None}
     if email:
-        data['email_otp'] = models.Email.create(email=email).otp
+        data['email_otp'] = models.Email.create(email=email, send_otp=True).otp
     if phone:
-        data['phone_otp'] = models.Phone.create(phone=phone).otp
+        data['phone_otp'] = models.Phone.create(phone=phone, send_otp=True).otp
     
     return data
 
@@ -19,9 +18,9 @@ def msg91_phone_otp_verification(phone, OTP, email=None):
     conn = http.client.HTTPConnection("control.msg91.com")
     payload = ''
     authkey = '264748AlvMnDweoe6v5c73d868'
-    message = 'Your verification code is {}.'.format(OTP)
+    message = 'Your GoMama verification code is {}.'.format(OTP)
 
-    route = '/api/sendotp.php?otp_length=4&authkey={}&message={}&sender=APP_NAME&mobile={}&otp={}'.format(authkey,
+    route = '/api/sendotp.php?otp_length=4&authkey={}&message={}&sender=GoMama&mobile={}&otp={}'.format(authkey,
                                                                                                              message,
                                                                                                              phone, OTP)
     if email is not None:

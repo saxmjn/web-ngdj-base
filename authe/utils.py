@@ -8,10 +8,13 @@ from django.conf import settings
 # PROJECT
 from general.utils import msg91_phone_otp_verification
 from . import jwt_utils
-from app import constants
-from app.utils import raise_error, validate_get_phone
-from general.models import Email
+from commune import constants
+from commune.utils import raise_error, validate_get_phone, validate_email
+from general.models import Email, Phone
 from user.models import UserProfile, UserLinkedInData, UserGoogleData
+
+logger = logging.getLogger("application")
+
 
 def get_or_create_user_from_google(data):
     try:
@@ -154,7 +157,7 @@ def create_user_from_phone(phone, first_name, last_name, password1, password2, o
 
 
 def get_user_from_phone(phone, password=None, phone_otp=None):
-    if not password or not phone_otp:
+    if not password and not phone_otp:
         raise_error('ERR-AUTH-INVALID-CREDENTIALS')
     
     phone_data = validate_get_phone(phone)
@@ -166,17 +169,37 @@ def get_user_from_phone(phone, password=None, phone_otp=None):
     user = user_profile.user
     if password and user.check_password(password):
         token = jwt_utils.get_token_for_user(user)
-        data = {'token': token, 'user_id': user.id, 'username': user.username}
+        data = {'token': token, 'user_id': user.id, 'username': user.username, 'user': user}
         return data
-    elif phone_otp and user_profile.phone_otp == phone_otp:
+    elif phone_otp and Phone.get_otp(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code']) == phone_otp:
         token = jwt_utils.get_token_for_user(user)
-        data = {'token': token, 'user_id': user.id, 'username': user.username}
+        data = {'token': token, 'user_id': user.id, 'username': user.username, 'user': user}
         return data
     else:
         raise_error('ERR-AUTH-INVALID-PASSWORD')
 
 
-def signup_user(first_name, last_name, password1, password2, otp=None, email=None, phone=None, username=None, phone_otp=None, email_otp=None):
+def auth_verification(email=None, phone=None):
+    username = None
+
+    if (email is None or not email) and (phone is None or not phone):
+        raise_error('ERR-AUTH-DETAIL-MISSING')
+
+    if email and validate_email(email=email):
+        userprofile = UserProfile.match_user_from_email(email=email)
+        if userprofile:
+            username = userprofile.user.username
+    elif phone:
+        phone_data = validate_get_phone(phone=phone)
+        userprofile = UserProfile.match_user_from_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code'])
+        if userprofile:
+            username = userprofile.user.username
+    
+
+    data = {'username': username}
+    return data
+
+def auth_signup(first_name, last_name, password1, password2, otp=None, email=None, phone=None, username=None, phone_otp=None, email_otp=None):
     if password1 != password2:
         raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
 
@@ -187,13 +210,14 @@ def signup_user(first_name, last_name, password1, password2, otp=None, email=Non
     data = {'username': user.username, 'token': token, 'user_id': user.id}
     return data
 
-def singin_user(password, email=None, phone=None):
-    if not email or not phone:
+def auth_signin(password, email=None, phone=None):
+    if (email is None or not email) and (phone is None or not phone):
         raise_error('ERR-AUTH-DETAIL-MISSING')
     if email:
         return get_user_from_email(email=email, password=password)
     else:
         return get_user_from_phone(phone=phone, password=password)
+
 
 def reset_password(user, old_password, password1, password2):
     if not user.check_password(old_password):
@@ -206,16 +230,41 @@ def reset_password(user, old_password, password1, password2):
     user.save()
 
 
-def forgot_password(user, otp, password1, password2):
+def forgot_password(user, password1, password2, email_otp=None, phone_otp=None):
+    if not password2 or not password2:
+        raise_error('ERR-AUTH-DETAIL-MISSING')
     if password1 != password2:
         raise_error('ERR-AUTH-UNMATCHED-PASSWORD')
+    if (email_otp is None or not email_otp) and (phone_otp is None or not phone_otp):
+        raise_error('ERR-AUTH-DETAIL-MISSING')
     
-    stored_otp = Email.get_otp(email=user.email)
-    if stored_otp == otp:
-        user.set_password(password1)
-        user.save()
-    else:
-        raise_error('ERR-AUTH-INVALID-OTP')
+    if email_otp:
+        stored_email = Email.get_email(email=user.email)
+        if stored_email.otp == email_otp:
+            user.set_password(password1)
+            user.save()
+        else:
+            raise_error('ERR-AUTH-INVALID-OTP')
+    if phone_otp:
+        stored_phone = Phone.get_phone(phone_number=user.userprofile.phone_number, phone_code=user.userprofile.phone_code)
+        if stored_phone.otp == phone_otp:
+            user.set_password(password1)
+            user.save()
+        else:
+            raise_error('ERR-AUTH-INVALID-OTP')
+    
+
+def forgot_password_anonymous(password1, password2, email_otp=None, phone_otp=None, email=None, phone=None):
+    if (email is None or not email) and (phone is None or not phone):
+        raise_error('ERR-AUTH-DETAIL-MISSING')
+    
+    if email and validate_email(email=email):
+        user = UserProfile.match_user_from_email(email=email).user
+        forgot_password(user=user, password1=password1, password2=password2, email_otp=email_otp)
+    elif phone:
+        phone_data = validate_get_phone(phone=phone)
+        user = UserProfile.match_user_from_phone(phone_number=phone_data['phone_number'], phone_code=phone_data['phone_code']).user
+        forgot_password(user=user, password1=password1, password2=password2, phone_otp=phone_otp)
 
 def registration(operation, phone, OTP=None, first_name=None, last_name=None, email=None, password=None):
     if operation == 'VERIFY_USER_REGISTRATION_SEND_OTP':

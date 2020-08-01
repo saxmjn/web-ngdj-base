@@ -3,10 +3,13 @@ import uuid
 # DJANGO
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-# PROJECT
+from commune.utils import raise_error
+from commune import settings, constants
 from . import utils
-from app import _fields as fields
-from app.utils import validate_get_phone, random_with_N_digits, validate_email, raise_error
+# PROJECT
+
+from commune.fields import UUIDField
+from commune.utils import validate_get_phone, random_with_N_digits, validate_email
 
 
 class File(models.Model):
@@ -15,7 +18,7 @@ class File(models.Model):
     Based on the architecture suggested at https://devcenter.heroku.com/articles/s3-upload-python
     Helps to generate secure URLs to upload/obtain files
     """
-    uuid = fields.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uuid = UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=250, help_text="The MIME type of the file")
     url = models.TextField(null=True, blank=True)
@@ -45,9 +48,9 @@ class File(models.Model):
         else:
             file.delete()
             raise ValueError('No bucket found')
-        access_control = 'public-read'
-        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA'
-        AWSSecretKey = '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'
+        access_control = 'public-read';
+        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA';
+        AWSSecretKey = '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';
         url = 'https://%s.s3.amazonaws.com/%s?AWSAccessKeyId=%s' % (S3_BUCKET, file.uuid, AWSAccessKeyId)
 
         file.set_url()
@@ -62,12 +65,14 @@ class File(models.Model):
 
     def set_url(self):
         url = 'https://s3.ap-south-1.amazonaws.com/%s/%s'
-        if self.bucket == 'event':
-            url = url % ('cmn-event-thumbnail', self.uuid)
-        elif self.bucket == 'story':
-            url = url % ('cmn-story-thumbnail', self.uuid)
+        if self.bucket == 'product-image':
+            url = url % ('cmn-product-image', self.uuid)
+        if self.bucket == 'product-thumbnail':
+            url = url % ('cmn-product-thumbnail', self.uuid)
+        elif self.bucket == 'business-logo':
+            url = url % ('cmn-brand-logo', self.uuid)
         else:
-            return
+            return None
 
         self.url = url
         self.save()
@@ -75,10 +80,12 @@ class File(models.Model):
     @staticmethod
     def get_url(bucket, uuid):
         url = 'https://s3.ap-south-1.amazonaws.com/%s/%s'
-        if bucket == 'event':
-            url = url % ('cmn-event-thumbnail', uuid)
-        elif bucket == 'story':
-            url = url % ('cmn-story-thumbnail', uuid)
+        if bucket == 'product-image':
+            url = url % ('cmn-product-image', uuid)
+        if bucket == 'product-thumbnail':
+            url = url % ('cmn-product-thumbnail', uuid)
+        elif bucket == 'business-logo':
+            url = url % ('cmn-brand-logo', uuid)
         else:
             return None
         return url
@@ -92,12 +99,13 @@ class Email(models.Model):
 
     @staticmethod
     def create(email, send_otp=False):
-        validate_email(email)
+        if not  validate_email(email):
+            raise_error('ERR-GNRL-INVALID-EMAIL')
         try:
             obj = Email.objects.get(email=email)
         except ObjectDoesNotExist:
             obj = Email.objects.create(email=email, otp=random_with_N_digits(6))
-        if send_otp:
+        if send_otp and settings.ENV_SETUP == 'PRODUCTION':
             pass
         return obj
 
@@ -108,6 +116,7 @@ class Email(models.Model):
         except ObjectDoesNotExist:
             raise_error('ERR-DJNG-002')
         return obj
+
 
 class Phone(models.Model):
     number = models.CharField(max_length=250)
@@ -124,14 +133,16 @@ class Phone(models.Model):
         phone_data = validate_get_phone(phone)
         try:
             obj = Phone.objects.get(number=phone_data['phone_number'], code=phone_data['phone_code'])
+            obj.otp = random_with_N_digits(6)
+            obj.save()
         except ObjectDoesNotExist:
 
             obj = Phone.objects.create(number=phone_data['phone_number'],
                                    code=phone_data['phone_code'], otp=random_with_N_digits(6))
-        if send_otp:
+        if send_otp and settings.ENV_SETUP == 'PRODUCTION':
             utils.msg91_phone_otp_verification(phone=obj.number, OTP=obj.otp)
         return obj
-    
+
     @staticmethod
     def get_phone(phone_number, phone_code):
         try:
@@ -140,9 +151,20 @@ class Phone(models.Model):
         except ObjectDoesNotExist:
             raise_error('ERR-DJNG-002')
 
+
+    @staticmethod
+    def get_otp(phone_number, phone_code):
+        try:
+            obj = Phone.objects.get(number=phone_number, code=phone_code)
+            return obj.otp
+        except ObjectDoesNotExist:
+            raise_error('ERR-DJNG-002')
+
+
 class Tag(models.Model):
     code = models.CharField(unique=True, max_length=100)
     name = models.CharField(max_length=100)
+    parent = models.CharField(max_length=100, choices=constants.tag_parent_choices, null=True, blank=True)
     active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     modified = models.DateTimeField(auto_now_add=True, editable=True)
@@ -179,25 +201,6 @@ class City(models.Model):
         data = {'cities': cities, 'count': cities.count()}
         return data
 
-
-class ContactQuery(models.Model):
-    name = models.CharField(max_length=150)
-    email = models.EmailField(max_length=500)
-    subject = models.TextField(blank=True, null=True)
-    message = models.TextField(blank=True, null=True)
-    resolved = models.NullBooleanField(blank=True)
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-
-    def __str__(self):
-        return self.subject + ': from ' + self.name + '(' + self.email + ')'
-
-    @classmethod
-    def create(cls, email, name, subject, message):
-        obj = cls.objects.create(email=email, name=name, subject=subject, message=message)
-        return obj
-
-
-class NewsletterSubscriber(models.Model):
     email = models.EmailField(max_length=500)
     subscribed = models.NullBooleanField(blank=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)

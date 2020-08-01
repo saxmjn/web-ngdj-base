@@ -10,11 +10,13 @@ urlpatterns = [
     url(r'^auth/', rest_views.Auth.as_view()),
     url(r'^email-auth/', rest_views.EmailAuth.as_view()),
     url(r'^phone-auth/', rest_views.PhoneAuth.as_view()),
+    url(r'^phone-otp-auth/', rest_views.PhoneOTPAuth.as_view()),
     url(r'^google-auth/', rest_views.GoogleAuth.as_view()),
     url(r'^linkedin-auth/', rest_views.LinkedinAuth.as_view()),
     url(r'^linkedin-auth-mobile/', rest_views.linkedin_auth_mobile),
     url(r'^registration/', rest_views.registration),
     url(r'^password-set/', rest_views.set_password),
     url(r'^password-reset/', rest_views.reset_password),
-    url(r'^password-forgot/', rest_views.forgot_password)
+    url(r'^password-forgot/', rest_views.forgot_password),
+    url(r'^password-forgot-anonymous/', rest_views.forgot_password_anonymous)
 ]

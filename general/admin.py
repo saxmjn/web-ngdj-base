@@ -7,6 +7,8 @@ from . import models
 class FileAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'name', 'type', 'bucket', 'url')
 
+class EmailAdmin(admin.ModelAdmin):
+    list_display = ('id', 'email', 'otp')
 
 class PhoneAdmin(admin.ModelAdmin):
     list_display = ('id', 'number', 'code', 'otp')
@@ -23,9 +25,8 @@ class CityAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.File, FileAdmin)
+admin.site.register(models.Email, EmailAdmin)
 admin.site.register(models.Phone, PhoneAdmin)
 admin.site.register(models.Category, CategoryAdmin)
 admin.site.register(models.Tag, TagAdmin)
 admin.site.register(models.City, CityAdmin)
-admin.site.register(models.ContactQuery)
-admin.site.register(models.NewsletterSubscriber)
