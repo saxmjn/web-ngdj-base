@@ -251,10 +251,11 @@ STREAM_API_SECRET = 'your-stream-api-secret'
 # FIREBASE
 # --------------------------------------------------------
 FIREBASE_PROJECT_ID = 'app-id'
+FIREBASE_INITALIZATION = False
 
-firebase_cred = credentials.Certificate(get_path('app/here-your-firebase-cred-file.json'))
-firebase_ins = firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
-
+if FIREBASE_INITALIZATION:
+    firebase_cred = credentials.Certificate(get_path('app/here-your-firebase-cred-file.json'))
+    firebase_ins = firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
 # --------------------------------------------------------
 # AWS
 # --------------------------------------------------------
