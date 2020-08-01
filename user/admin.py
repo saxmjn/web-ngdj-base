@@ -5,10 +5,6 @@ from django.contrib import admin
 from . import models
 
 
-class UserTagAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'code', 'name', 'type')
-
-
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'name', 'city', 'user_link', 'email', 'phone', 'created', 'last_opened_at')
     search_fields = ['user__username']
@@ -39,17 +35,4 @@ class UserProfileAdmin(admin.ModelAdmin):
     user_link.short_description = 'User Link'
 
 
-class UserNotificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'sender', 'title', 'created')
-    readonly_fields = ('user', 'sender', 'title', 'created', 'type', 'reference_type', 'reference_id')
-
-
-class UserFollowerAdmin(admin.ModelAdmin):
-    list_display = ('pk', 'user', 'follower', 'active', 'created')
-    readonly_fields = ('pk', 'user', 'follower', 'active', 'created')
-
-
-admin.site.register(models.UserTag, UserTagAdmin)
 admin.site.register(models.UserProfile, UserProfileAdmin)
-admin.site.register(models.UserNotification, UserNotificationAdmin)
-admin.site.register(models.UserFollower, UserFollowerAdmin)

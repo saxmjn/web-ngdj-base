@@ -3,13 +3,13 @@ import uuid
 # DJANGO
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from commune.utils import raise_error
-from commune import settings, constants
+from app.utils import raise_error
+from app import settings, constants, constants_app
 from . import utils
 # PROJECT
 
-from commune.fields import UUIDField
-from commune.utils import validate_get_phone, random_with_N_digits, validate_email
+from app._fields import UUIDField
+from app.utils import validate_get_phone, random_with_N_digits, validate_email
 
 
 class File(models.Model):
@@ -48,9 +48,9 @@ class File(models.Model):
         else:
             file.delete()
             raise ValueError('No bucket found')
-        access_control = 'public-read';
-        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA';
-        AWSSecretKey = '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';
+        access_control = 'public-read'
+        AWSAccessKeyId = 'AKIAJVMG2OZHAAZP44AA'
+        AWSSecretKey = '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'
         url = 'https://%s.s3.amazonaws.com/%s?AWSAccessKeyId=%s' % (S3_BUCKET, file.uuid, AWSAccessKeyId)
 
         file.set_url()
@@ -164,7 +164,7 @@ class Phone(models.Model):
 class Tag(models.Model):
     code = models.CharField(unique=True, max_length=100)
     name = models.CharField(max_length=100)
-    parent = models.CharField(max_length=100, choices=constants.tag_parent_choices, null=True, blank=True)
+    parent = models.CharField(max_length=100, choices=constants_app.tag_parent_choices, null=True, blank=True)
     active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     modified = models.DateTimeField(auto_now_add=True, editable=True)
@@ -200,19 +200,3 @@ class City(models.Model):
         cities = cls.objects.all().order_by('name')
         data = {'cities': cities, 'count': cities.count()}
         return data
-
-    email = models.EmailField(max_length=500)
-    subscribed = models.NullBooleanField(blank=True)
-    created = models.DateTimeField(auto_now_add=True, editable=False)
-
-    def __str__(self):
-        return self.email
-
-    @classmethod
-    def create(cls, email):
-        valid_email = email.lower()
-        try:
-            obj = cls.objects.get(email=valid_email)
-        except ObjectDoesNotExist:
-            obj = cls.objects.create(email=valid_email)
-        return obj

@@ -1,7 +1,7 @@
 import requests
 import json
 from . import models
-from commune import utils
+from app import utils
 
 def get_otp(email=None, phone=None):
     data = {'email_otp': None, 'phone_otp': None}

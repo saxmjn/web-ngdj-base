@@ -252,6 +252,8 @@ STREAM_API_SECRET = 'your-stream-api-secret'
 # --------------------------------------------------------
 FIREBASE_PROJECT_ID = 'app-id'
 FIREBASE_INITALIZATION = False
+firebase_cred = None
+firebase_ins = None
 
 if FIREBASE_INITALIZATION:
     firebase_cred = credentials.Certificate(get_path('app/here-your-firebase-cred-file.json'))
