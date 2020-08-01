@@ -3,15 +3,11 @@ from app.settings import get_path, get_from_environment
 from firebase_admin import credentials
 from firebase_admin import firestore
 from firebase_admin import messaging
-from app.settings import FIREBASE_PROJECT_ID 
-
-firebase_cred_file = 'app/here-your-firebase-cred-file.json'
-cred = credentials.Certificate(get_path(firebase_cred_file))
-firebase_ins = firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
+from app.settings import FIREBASE_PROJECT_ID, firebase_ins, firebase_cred, get_path, get_from_environment
 
 
 def get_users():
-    firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
+    firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID })
     db = firestore.client()
     docs = db.collection(u'users').get()
     for doc in docs:
@@ -21,7 +17,7 @@ def get_users():
 def setup_user_on_firebase(user):
     if get_from_environment('SETUP') == 'PRODUCTION':
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
         db = firestore.client()
         user_id = str(user.id)
         db.collection('presence').document(user_id).set({'online': True})
@@ -33,7 +29,7 @@ def setup_user_on_firebase(user):
 def create_chat_on_firebase(firebase_id, user1_id, user2_id):
     if get_from_environment('SETUP') == 'PRODUCTION':
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID })
         db = firestore.client()
         context = {'notify_new_message_to_user1': False, 'notify_new_message_to_user2': False,
                    'total_messages_count': 0, 'user1': user1_id, 'user2': user2_id}
@@ -43,7 +39,7 @@ def create_chat_on_firebase(firebase_id, user1_id, user2_id):
 def notify_new_msg_to_user(from_user, chat, count):
     if get_from_environment('SETUP') == 'PRODUCTION':
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID })
         db = firestore.client()
         if from_user == chat.user1 and chat.firebase_id:
             db.collection('chats').document(chat.firebase_id).set({'total_messages_count': count}, merge=True)
@@ -62,7 +58,7 @@ def notify_new_msg_to_user(from_user, chat, count):
 def notify_general_to_user(to_user, count):
     if get_from_environment('SETUP') == 'PRODUCTION':
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
         db = firestore.client()
         db.collection(u'users-external-event').document(str(to_user.id)).set({'notify_general_count': count}, merge=True)
 
@@ -70,14 +66,14 @@ def notify_general_to_user(to_user, count):
 def contacts_upload_trigger(to_user):
     if get_from_environment('SETUP') == 'PRODUCTION':
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
         db = firestore.client()
         db.collection(u'users-external-event').document(str(to_user.id)).set({'notify_contacts_upload': True}, merge=True)
 
 
 def online_users():
     if not firebase_ins:
-        firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID })
+        firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID })
     db = firestore.client()
     docs = db.collection('presence').where(u'online', u'==', True).get()
     users = [int(doc.id) for doc in docs]
@@ -87,7 +83,7 @@ def online_users():
 def push_notification_trigger(to_user, from_user=None, type='', reference_id='', reference_username=''):
     try:
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
         token = to_user.userprofile.device_token
         data = {'reference_type': type, 'reference_id': str(reference_id), 'reference_username': reference_username,
                 'title': ''}
@@ -119,7 +115,7 @@ def push_notification_trigger_to_topic(topic, from_user=None, type='', reference
             return
 
         if not firebase_ins:
-            firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+            firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
 
         data = {'reference_type': type, 'reference_id': str(reference_id), 'reference_username': reference_username,
                 'title': ''}
@@ -141,7 +137,7 @@ def push_notification_trigger_to_topic(topic, from_user=None, type='', reference
 
 def subscribe_to_topic(topic, user):
     if not firebase_ins:
-        firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+        firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
     token = user.userprofile.device_token
     if token:
         messaging.subscribe_to_topic(tokens=[token], topic=topic, app=None)
@@ -149,7 +145,7 @@ def subscribe_to_topic(topic, user):
 
 def unsubscribe_from_topic(topic, user):
     if not firebase_ins:
-        firebase_admin.initialize_app(cred, {'projectId':FIREBASE_PROJECT_ID})
+        firebase_admin.initialize_app(firebase_cred, {'projectId':FIREBASE_PROJECT_ID})
     token = user.userprofile.device_token
     if token:
         messaging.unsubscribe_from_topic(tokens=[token], topic=topic, app=None)
@@ -157,7 +153,7 @@ def unsubscribe_from_topic(topic, user):
 
 def sample_push():
     if not firebase_ins:
-        firebase_admin.initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
+        firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
     data = {}
     token = 'dRrqElTiZhg:APA91bG-u_6j355pW-RC5XzemAEMnsSCvyPEp-DoQc6l3qk3TgSyfQGXKmumGsAZoI7qtp_f1Kk9KPEdcRBgXBtoiv3cc1GRZXO9jJQPcUdDfXWdpJPkrAEKQEJkoeMog4VxxcNqonmr'
     title = 'sent you a new message'
