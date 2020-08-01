@@ -16,6 +16,9 @@ import dj_database_url
 import sys
 from django.core.exceptions import ImproperlyConfigured
 
+# FIREBASE IMPORT
+import firebase_admin
+from firebase_admin import credentials
 
 def get_from_environment(var_name):
     try:
@@ -247,11 +250,17 @@ STREAM_API_SECRET = 'your-stream-api-secret'
 # --------------------------------------------------------
 # FIREBASE
 # --------------------------------------------------------
-FIREBASE_PROJECT_ID = 'your-firebase-project-id'
+FIREBASE_PROJECT_ID = 'app-id'
+
+firebase_cred = credentials.Certificate(get_path('app/here-your-firebase-cred-file.json'))
+firebase_ins = firebase_admin.initialize_app(firebase_cred, {'projectId': FIREBASE_PROJECT_ID})
 
 # --------------------------------------------------------
 # AWS
 # --------------------------------------------------------
+
+AWSAccessKeyID = 'AKIA42LNSKGPR26XC25X'
+AWSSecretAccessKey = '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'
 
 # --------------------------------------------------------
 # AUTHENTICATION & PERMISSION
