@@ -72,7 +72,7 @@ ipython==5.2.2
 ipython-genutils==0.1.0
 itypes==1.1.0
 jdcal==1.2
-Jinja2==2.9.6
+Jinja2==2.11.3
 Logentries==0.7
 mandrill==1.0.57
 MarkupSafe==1.0
